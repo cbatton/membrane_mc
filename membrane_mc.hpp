@@ -27,6 +27,13 @@ using namespace std;
 class membrane_mc {
     public:
 
+        // Functions
+        void InputParam();
+        void Equilibriate(int, chrono::steady_clock::time_point&);
+        void Simulate(int, chrono::steady_clock::time_point&);
+        void OutputTimes();
+        void OutputAnalyzers();
+        // Variables
         // Class variables
         shared_ptr<analyzers> analysis;
         shared_ptr<init_system> initializer;

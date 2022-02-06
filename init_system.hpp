@@ -21,7 +21,6 @@ class init_system {
     public:
         void initializeState();
         void initializeEquilState();
-        void inputParam();
         void inputState();
         void SaruSeed(unsigned int);
         void generateTriangulation();

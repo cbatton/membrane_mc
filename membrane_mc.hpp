@@ -19,6 +19,7 @@ class membrane_mc {
 
     // Going to organize these things to help keep things sane
     // Functions
+    // Initialize state stuff?
     void initializeState();
     void initializeEquilState();
     void inputParam();
@@ -30,30 +31,43 @@ class membrane_mc {
     inline void link_triangle_face(int, int, int *);
     void useTriangulation(string);
     void useTriangulationRestart(string);
+    // Output
     void outputTriangulation(string);
     void outputTriangulationAppend(string);
     void outputTriangulationStorage();
+    void dumpXYZConfig(string);
+    void dumpXYZConfigNormal(string);
+    void dumpXYZCheckerboard(string);
+    void dumpPhiNode(string);
+    void dumpAreaNode(string);
+    // Simulation utilities
     double wrapDistance_x(double, double);
     double wrapDistance_y(double, double);
     double lengthLink(int, int);
-    void generateNeighborList();
     void areaNode(int);
     void normalTriangle(int i, double normal[3]);
-    void shuffle_saru(Saru&, vector<int>&);
-    void generateCheckerboard();
-    double cosineAngle(int, int, int);
+    double cosineAngle(int, int, int); // Will use a different scheme here.....
+    // Want to use one where I compute cotangents directly using cos, sin
     double cosineAngle_norm(int, int, int);
+    void shuffle_saru(Saru&, vector<int>&);
     double cotangent(double);
     void acos_fast_initialize();
     inline double acos_fast(double);
     void cotangent_fast_initialize();
     inline double cotangent_fast(double);
+
+    // Neighborlist
+    void generateNeighborList();
+    void generateCheckerboard();
+
+    // Simulation utilities
     void linkMaxMin();
     void energyNode(int);
     void initializeEnergy();
     void initializeEnergy_scale();
     void energyNode_i(int);
     void initializeEnergy_i();
+    // MC moves
     void DisplaceStep(int = -1, int = 0);
     void TetherCut(int = -1, int = 0);
     void ChangeMassNonCon(int = -1, int = 0);
@@ -63,18 +77,13 @@ class membrane_mc {
     void moveProtein_gen(int, int);
     void moveProtein_nl(int, int, int);
     void ChangeArea();
+    // Essential simulation stuff
     void CheckerboardMCSweep(bool);
     void nextStepSerial();
     void nextStepParallel(bool);
-    void dumpXYZConfig(string);
-    void dumpXYZConfigNormal(string);
-    void dumpXYZCheckerboard(string);
-    void dumpPhiNode(string);
-    void dumpAreaNode(string);
-    void sampleNumberNeighbors(int);
-    void dumpNumberNeighbors(string, int);
     void equilibriate(int, chrono::steady_clock::time_point&);
     void simulate(int, chrono::steady_clock::time_point&);
+    // Analyzers
     void energyAnalyzer();
     void areaAnalyzer();
     void areaProjAnalyzer();
@@ -82,6 +91,8 @@ class membrane_mc {
     void numberNeighborsAnalyzer();
     void umbAnalyzer();
     void umbOutput(int, ofstream&);
+    void sampleNumberNeighbors(int);
+    void dumpNumberNeighbors(string, int);
 
     // Variables
     // Initial mesh is points distributed in rectangular grid
@@ -93,37 +104,23 @@ class membrane_mc {
     int active_vertices = vertices;
     int active_faces = faces;
 
-    // Note total number of nodes is dim_x*dim_y
-    double Radius_x[dim_x][dim_y]; // Array to store x coordinate of node
-    double Radius_y[dim_x][dim_y]; // Array to store y coordinate of node
-    double Radius_z[dim_x][dim_y]; // Array to store z coordinate of node
-    double Radius_x_original[dim_x][dim_y];
-    double Radius_y_original[dim_x][dim_y];
-    double Radius_z_original[dim_x][dim_y];
     // Triangulation radius values
-    double Radius_x_tri[vertices];
-    double Radius_y_tri[vertices];
-    double Radius_z_tri[vertices];
-    double Radius_x_tri_original[vertices];
-    double Radius_y_tri_original[vertices];
-    double Radius_z_tri_original[vertices];
-    int Ising_Array[vertices];
+    vector<vector<double> Radius_tri;
+    vector<vector<double> Radius_tri_original;
+    vector<int> Ising_Array;
     // Triangles
     const int neighbor_min = 2;
     const int neighbor_max = 10;
-    int triangle_list[faces][3];
-    int point_neighbor_max[vertices];
-    int point_neighbor_list[vertices][neighbor_max];
-    int point_triangle_list[vertices][neighbor_max];
-    int point_triangle_max[vertices];
-    int point_neighbor_triangle[vertices][neighbor_max][2];
 
-    int triangle_list_original[faces][3];
-    int point_neighbor_list_original[vertices][neighbor_max];
-    int point_neighbor_max_original[vertices];
-    int point_triangle_list_original[vertices][neighbor_max];
-    int point_triangle_max_original[vertices];
-    int point_neighbor_triangle_original[vertices][neighbor_max][2];
+    vector<vector<int>> triangle_list;
+    vector<vector<int>> point_neighbor_list;
+    vector<vector<int>> point_triangle_list;
+    vector<vector<vector<int>>> point_neighbor_triangle;
+
+    vector<vector<int>> triangle_list_original;
+    vector<vector<int>> point_neighbor_list_original;
+    vector<vector<int>> point_triangle_list_original;
+    vector<vector<vector<int>>> point_neighbor_triangle_original;
 
     // Neighborlist
     vector<vector<int>> neighbor_list; // Neighbor list
@@ -144,19 +141,19 @@ class membrane_mc {
     int checkerboard_y = 1;
     double checkerboard_set_size = 3.5;
 
-    double phi_vertex[vertices];
-    double phi_vertex_original[vertices];
-    double mean_curvature_vertex[vertices];
-    double mean_curvature_vertex_original[vertices];
-    double sigma_vertex[vertices];
-    double sigma_vertex_original[vertices];
+    vector<double> phi_vertex;
+    vector<double> phi_vertex_original;
+    vector<double> mean_curvature_vertex;
+    vector<double> mean_curvature_vertex_original;
+    vector<double> sigma_vertex;
+    vector<double> sigma_vertex_original;
     double Phi = 0.0; // Energy at current step
     double Phi_phi = 0.0; // Composition energy at current step
     double Phi_bending = 0.0; // Bending energy at current step
     int Mass = 0;
     double Magnet = 0;
-    double area_faces[faces];
-    double area_faces_original[faces];
+    vector<double> area_faces;
+    vector<double> area_faces_original;
     double Area_total;
     double sigma_i_total = 0.0;
     double Area_proj_average;
@@ -216,26 +213,25 @@ class membrane_mc {
     int nl_move_start = 0;
 
     // Protein variables
-    int protein_node[vertices];
+    vector<int> protein_node;
     int num_proteins = 2;
 
     // Storage variables
-    const int storage_time = 10;
-    const int storage = Cycles_prod/storage_time;
-    int storage_counts = 0;
-    double energy_storage[storage+1];
-    double area_storage[storage+1];
-    double area_proj_storage[storage+1];
-    double mass_storage[storage+1];
+    int storage_time = 10;
+    int storage = Cycles_prod/storage_time;
+    vector<double> energy_storage;
+    vector<double> area_storage;
+    vector<double> area_proj_storage;
+    vector<double> mass_storage;
     // Analyzer
-    const int storage_neighbor =  10;
-    const int storage_umb_time = 100;
-    const int storage_umb = Cycles_prod/storage_umb_time;
+    int storage_neighbor =  10;
+    int storage_umb_time = 100;
+    int storage_umb = Cycles_prod/storage_umb_time;
     int umb_counts = 0;
     int neighbor_counts = 0;
-    long long int numbers_neighbor[neighbor_max][Cycles_prod/storage_neighbor];
-    double energy_storage_umb[storage_umb];
-    double energy_harmonic_umb[storage_umb];
+    vector<vector<long long int>> numbers_neighbor;
+    vector<double> energy_storage_umb;
+    vector<double> energy_harmonic_umb;
 
     // Pseudo-random number generators
     vector<Saru> generators;

@@ -10,298 +10,143 @@
 #include <mpi.h>
 #include <iomanip>
 #include <chrono>
+#include "saruprng.hpp"
+#include "analyzers.hpp"
+#include "init_system.hpp"
+#include "mc_moves.hpp"
+#include "neighborlist.hpp"
+#include "output_system.hpp"
+#include "simulation.hpp"
+#include "sim_utilities.hpp"
+#include "utilities.hpp"
 using namespace std;
 
 #ifndef MMC_H_
 #define MMC_H_
 
 class membrane_mc {
+    public:
 
-    // Going to organize these things to help keep things sane
-    // Functions
-    // Initialize state stuff?
-    void initializeState();
-    void initializeEquilState();
-    void inputParam();
-    void inputState();
-    void SaruSeed(unsigned int);
-    void generateTriangulation();
-    void generateTriangulationEquil();
-    inline int link_triangle_test(int, int);
-    inline void link_triangle_face(int, int, int *);
-    void useTriangulation(string);
-    void useTriangulationRestart(string);
-    // Output
-    void outputTriangulation(string);
-    void outputTriangulationAppend(string);
-    void outputTriangulationStorage();
-    void dumpXYZConfig(string);
-    void dumpXYZConfigNormal(string);
-    void dumpXYZCheckerboard(string);
-    void dumpPhiNode(string);
-    void dumpAreaNode(string);
-    // Simulation utilities
-    double wrapDistance_x(double, double);
-    double wrapDistance_y(double, double);
-    double lengthLink(int, int);
-    void areaNode(int);
-    void normalTriangle(int i, double normal[3]);
-    double cosineAngle(int, int, int); // Will use a different scheme here.....
-    // Want to use one where I compute cotangents directly using cos, sin
-    double cosineAngle_norm(int, int, int);
-    void shuffle_saru(Saru&, vector<int>&);
-    double cotangent(double);
-    void acos_fast_initialize();
-    inline double acos_fast(double);
-    void cotangent_fast_initialize();
-    inline double cotangent_fast(double);
+        // Class variables
+        shared_ptr<analyzers> analysis;
+        shared_ptr<init_system> initializer;
+        shared_ptr<mc_moves> mc_mover;
+        shared_ptr<neighborlist> nl;
+        shared_ptr<output_system> output;
+        shared_ptr<simulation> sim;
+        shared_ptr<sim_utilities> sim_util;
+        shared_ptr<utilities> util;
+        // Variables
+        // Initial mesh is points distributed in rectangular grid
+        int dim_x = 200; // Nodes in x direction
+        int dim_y = 200; // Nodes in y direction
+        // Triangle properties
+        int vertices = dim_x*dim_y;
+        int faces = 2*dim_x*dim_y;
+        int active_vertices = vertices;
+        int active_faces = faces;
 
-    // Neighborlist
-    void generateNeighborList();
-    void generateCheckerboard();
+        // Triangulation radius values
+        vector<vector<double> Radius_tri;
+        vector<vector<double> Radius_tri_original;
+        vector<int> Ising_Array;
+        // Triangles
+        const int neighbor_min = 2;
+        const int neighbor_max = 10;
 
-    // Simulation utilities
-    void linkMaxMin();
-    void energyNode(int);
-    void initializeEnergy();
-    void initializeEnergy_scale();
-    void energyNode_i(int);
-    void initializeEnergy_i();
-    // MC moves
-    void DisplaceStep(int = -1, int = 0);
-    void TetherCut(int = -1, int = 0);
-    void ChangeMassNonCon(int = -1, int = 0);
-    void ChangeMassNonCon_gl(int = -1);
-    void ChangeMassCon(int = -1, int = 0);
-    void ChangeMassCon_nl();
-    void moveProtein_gen(int, int);
-    void moveProtein_nl(int, int, int);
-    void ChangeArea();
-    // Essential simulation stuff
-    void CheckerboardMCSweep(bool);
-    void nextStepSerial();
-    void nextStepParallel(bool);
-    void equilibriate(int, chrono::steady_clock::time_point&);
-    void simulate(int, chrono::steady_clock::time_point&);
-    // Analyzers
-    void energyAnalyzer();
-    void areaAnalyzer();
-    void areaProjAnalyzer();
-    void massAnalyzer();
-    void numberNeighborsAnalyzer();
-    void umbAnalyzer();
-    void umbOutput(int, ofstream&);
-    void sampleNumberNeighbors(int);
-    void dumpNumberNeighbors(string, int);
+        vector<vector<int>> triangle_list;
+        vector<vector<int>> point_neighbor_list;
+        vector<vector<int>> point_triangle_list;
+        vector<vector<vector<int>>> point_neighbor_triangle;
 
-    // Variables
-    // Initial mesh is points distributed in rectangular grid
-    const int dim_x = 200; // Nodes in x direction
-    const int dim_y = 200; // Nodes in y direction
-    // Triangle properties
-    const int vertices = dim_x*dim_y;
-    const int faces = 2*dim_x*dim_y;
-    int active_vertices = vertices;
-    int active_faces = faces;
+        vector<vector<int>> triangle_list_original;
+        vector<vector<int>> point_neighbor_list_original;
+        vector<vector<int>> point_triangle_list_original;
+        vector<vector<vector<int>>> point_neighbor_triangle_original;
 
-    // Triangulation radius values
-    vector<vector<double> Radius_tri;
-    vector<vector<double> Radius_tri_original;
-    vector<int> Ising_Array;
-    // Triangles
-    const int neighbor_min = 2;
-    const int neighbor_max = 10;
 
-    vector<vector<int>> triangle_list;
-    vector<vector<int>> point_neighbor_list;
-    vector<vector<int>> point_triangle_list;
-    vector<vector<vector<int>>> point_neighbor_triangle;
+        vector<double> phi_vertex;
+        vector<double> phi_vertex_original;
+        vector<double> mean_curvature_vertex;
+        vector<double> mean_curvature_vertex_original;
+        vector<double> sigma_vertex;
+        vector<double> sigma_vertex_original;
+        double Phi = 0.0; // Energy at current step
+        double Phi_phi = 0.0; // Composition energy at current step
+        double Phi_bending = 0.0; // Bending energy at current step
+        int Mass = 0;
+        double Magnet = 0;
+        vector<double> area_faces;
+        vector<double> area_faces_original;
+        double Area_total;
+        double sigma_i_total = 0.0;
+        double Area_proj_average;
 
-    vector<vector<int>> triangle_list_original;
-    vector<vector<int>> point_neighbor_list_original;
-    vector<vector<int>> point_triangle_list_original;
-    vector<vector<vector<int>>> point_neighbor_triangle_original;
+        double k_b[3] = {20.0, 20.0, 20.0}; // k units
+        double k_g[3] = {0.0, 0.0, 0.0}; // k units
+        double k_a[3] = {0.0, 0.0, 0.0}; // k units
+        double gamma_surf[3] = {0.0, 0.0, 0.0}; // k units
+        double tau_frame = 0;
+        double ising_values[3] = {-1.0, 1.0, 1.0};
+        double spon_curv[3] = {0.0,0.0,0.0}; // Spontaneous curvature at protein nodes
+        double spon_curv_end = 0.0;
+        double J_coupling[3][3] = {{1.0,1.0,1.0},{1.0,1.0,1.0},{1.0,1.0,1.0}};
+        double h_external = 0.0;
+        // double area_original_total = 0;
+        // double area_current_total = 0;
+        double Length_x = 96; // Length of a direction
+        double Length_y = 96;
+        double Length_z = 60;
+        double Length_x_old = Length_x;
+        double Length_y_old = Length_y;
+        double Length_z_old = Length_z;
+        double scale_xy = 1.0;
+        double Length_x_base = Length_x;
+        double Length_y_base = Length_y;
+        double scale_xy_old = scale_xy;
+        double num_frac = 0.5; // Number fraction of types
+        double scale = 1.0;
+        double T = 2.0; // Temperature
+        double T_list[2] = {2.0, 2.0};
 
-    // Neighborlist
-    vector<vector<int>> neighbor_list; // Neighbor list
-    vector<int> neighbor_list_index; // Map from particle to index
-    vector<vector<int>> neighbors; // Neighboring bins
-    vector<int> index_particles_max_nl;
-    // Indexing for neighbor list
-    int nl_x = int(9000*2.0)/1.00-1;
-    int nl_y = int(9000*2.0)/1.00-1;
-    int nl_z = int(60*2.0)/1.00-1;
+        // Protein variables
+        vector<int> protein_node;
+        int num_proteins = 2;
 
-    // Checkerboard set
-    vector<vector<int>> checkerboard_list; // Neighbor list
-    vector<int> checkerboard_index; // Map from particle to index
-    vector<vector<int>> checkerboard_neighbors; // Neighboring bins
-    // Indexing for neighbor list
-    int checkerboard_x = 1;
-    int checkerboard_y = 1;
-    double checkerboard_set_size = 3.5;
+        // Pseudo-random number generators
+        vector<Saru> generators;
+        Saru generator;
+        unsigned int seed_base = 0;
+        unsigned int count_step = 0;
 
-    vector<double> phi_vertex;
-    vector<double> phi_vertex_original;
-    vector<double> mean_curvature_vertex;
-    vector<double> mean_curvature_vertex_original;
-    vector<double> sigma_vertex;
-    vector<double> sigma_vertex_original;
-    double Phi = 0.0; // Energy at current step
-    double Phi_phi = 0.0; // Composition energy at current step
-    double Phi_bending = 0.0; // Bending energy at current step
-    int Mass = 0;
-    double Magnet = 0;
-    vector<double> area_faces;
-    vector<double> area_faces_original;
-    double Area_total;
-    double sigma_i_total = 0.0;
-    double Area_proj_average;
+        // Time
+        chrono::steady_clock::time_point t1;
+        chrono::steady_clock::time_point t2;
+        double final_time = 120.0;
+        double final_warning = 60.0;
+        double time_storage_cycle[2] = {0,0};
+        double time_storage_area[4] = {0,0,0,0};
+        double time_storage_displace[3] = {0,0,0};
+        double time_storage_other[8] = {0,0,0,0,0,0,0,0};
+        double time_storage_overall;
 
-    double k_b[3] = {20.0, 20.0, 20.0}; // k units
-    double k_g[3] = {0.0, 0.0, 0.0}; // k units
-    double k_a[3] = {0.0, 0.0, 0.0}; // k units
-    double gamma_surf[3] = {0.0, 0.0, 0.0}; // k units
-    double tau_frame = 0;
-    double ising_values[3] = {-1.0, 1.0, 1.0};
-    double spon_curv[3] = {0.0,0.0,0.0}; // Spontaneous curvature at protein nodes
-    double spon_curv_end = 0.0;
-    double J_coupling[3][3] = {{1.0,1.0,1.0},{1.0,1.0,1.0},{1.0,1.0,1.0}};
-    double h_external = 0.0;
-    // double area_original_total = 0;
-    // double area_current_total = 0;
-    double Length_x = 96; // Length of a direction
-    double Length_y = 96;
-    double Length_z = 60;
-    double Length_x_old = Length_x;
-    double Length_y_old = Length_y;
-    double Length_z_old = Length_z;
-    double scale_xy = 1.0;
-    double Length_x_base = Length_x;
-    double Length_y_base = Length_y;
-    double scale_xy_old = scale_xy;
-    double box_x = Length_x/double(nl_x); 
-    double box_y = Length_y/double(nl_y); 
-    double box_z = 2*Length_z/double(nl_z);
-    double box_x_checkerboard = Length_x/checkerboard_x;
-    double box_y_checkerboard = Length_y/checkerboard_y;
-    double cell_center_x = 0.0;
-    double cell_center_y = 0.0;
-    double lambda = 0.0075; // Maximum percent change in displacement
-    double lambda_scale = 0.01; // Maximum percent change in scale
-    double num_frac = 0.5; // Number fraction of types
-    double scale = 1.0;
-    const int Cycles_eq = 1000001;
-    const int Cycles_prod = 1000001;
-    double T = 2.0; // Temperature
-    double T_list[2] = {2.0, 2.0};
-    long long int steps_tested_displace = 0;
-    long long int steps_rejected_displace = 0;
-    long long int steps_tested_tether = 0;
-    long long int steps_rejected_tether = 0;
-    long long int steps_tested_mass = 0;
-    long long int steps_rejected_mass = 0;
-    long long int steps_tested_protein = 0;
-    long long int steps_rejected_protein = 0;
-    long long int steps_tested_area = 0;
-    long long int steps_rejected_area = 0;
-    long long int steps_tested_eq = 0;
-    long long int steps_rejected_eq = 0;
-    long long int steps_tested_prod = 0;
-    long long int steps_rejected_prod = 0;
-    // nl move parameter
-    int nl_move_start = 0;
+        // MPI variables
+        int world_size=1;
+        int world_rank=0;
+        string local_path;
+        vector<string> rank_paths;
+        string output;
+        string output_path;
+        streambuf *myfilebuf;
 
-    // Protein variables
-    vector<int> protein_node;
-    int num_proteins = 2;
-
-    // Storage variables
-    int storage_time = 10;
-    int storage = Cycles_prod/storage_time;
-    vector<double> energy_storage;
-    vector<double> area_storage;
-    vector<double> area_proj_storage;
-    vector<double> mass_storage;
-    // Analyzer
-    int storage_neighbor =  10;
-    int storage_umb_time = 100;
-    int storage_umb = Cycles_prod/storage_umb_time;
-    int umb_counts = 0;
-    int neighbor_counts = 0;
-    vector<vector<long long int>> numbers_neighbor;
-    vector<double> energy_storage_umb;
-    vector<double> energy_harmonic_umb;
-
-    // Pseudo-random number generators
-    vector<Saru> generators;
-    Saru generator;
-    unsigned int seed_base = 0;
-    unsigned int count_step = 0;
-
-    // Time
-    chrono::steady_clock::time_point t1;
-    chrono::steady_clock::time_point t2;
-    double final_time = 120.0;
-    double final_warning = 60.0;
-    double time_storage_cycle[2] = {0,0};
-    double time_storage_area[4] = {0,0,0,0};
-    double time_storage_displace[3] = {0,0,0};
-    double time_storage_other[8] = {0,0,0,0,0,0,0,0};
-    double time_storage_overall;
-
-    // Look up table variables
-    const int look_up_density = 10001;
-    double acos_lu_min = -1.0;
-    double acos_lu_max = 1.0;
-    double cot_lu_min = 0.15;
-    double cot_lu_max = M_PI-0.15;
-    double lu_interval_acos = (acos_lu_max-acos_lu_min)/(look_up_density-1);
-    double lu_interval_cot = (cot_lu_max-cot_lu_min)/(look_up_density-1);
-    double in_lu_interval_acos = 1.0/lu_interval_acos;
-    double in_lu_interval_cot = 1.0/lu_interval_cot;
-
-    // Arrays to store look up tables
-    double lu_points_acos[look_up_density];
-    double lu_values_acos[look_up_density];
-    double lu_points_cot[look_up_density];
-    double lu_values_cot[look_up_density];
-
-    // MPI variables
-    int world_size=1;
-    int world_rank=0;
-    string local_path;
-    vector<string> rank_paths;
-    string output;
-    string output_path;
-    streambuf *myfilebuf;
-
-    // Testing
-    double max_diff = -1;
-    double relative_diff = 0;
-
-    // openmp stuff
-    const int max_threads = 272;
-    int active_threads = 0;
-    double Phi_diff_thread[max_threads][8];
-    double Phi_phi_diff_thread[max_threads][8];
-    double Phi_bending_diff_thread[max_threads][8];
-    double Area_diff_thread[max_threads][8];
-    int Mass_diff_thread[max_threads][8];
-    double Magnet_diff_thread[max_threads][8];
-    int steps_tested_displace_thread[max_threads][8];
-    int steps_rejected_displace_thread[max_threads][8];
-    int steps_tested_tether_thread[max_threads][8];
-    int steps_rejected_tether_thread[max_threads][8];
-    int steps_tested_mass_thread[max_threads][8];
-    int steps_rejected_mass_thread[max_threads][8];
-    int steps_tested_protein_thread[max_threads][8];
-    int steps_rejected_protein_thread[max_threads][8];
-    /*
-    int omp_get_max_threads();
-    int omp_get_thread_num();
-    int omp_get_num_threads();
-    */
+        // Testing
+        double max_diff = -1;
+        double relative_diff = 0;
+        // Now time to call all submodules
+        // Probably going to do dirty things with everything being cross-referenced
+        // Is it safer than a megafile? Probably not
+        // Easier to read? Probably
+        // *this is your friend to get a reference passing
 };
 
 #endif

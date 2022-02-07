@@ -17,16 +17,16 @@ using namespace std;
 #ifndef OUTPUT_SYSTEM_
 #define OUTPUT_SYSTEM_
 
-class output_system {
+class OutputSystem {
     public:
-        void outputTriangulation(string);
-        void outputTriangulationAppend(string);
-        void outputTriangulationStorage();
-        void dumpXYZConfig(string);
-        void dumpXYZConfigNormal(string);
-        void dumpXYZCheckerboard(string);
-        void dumpPhiNode(string);
-        void dumpAreaNode(string);
+        void OutputTriangulation(string);
+        void OutputTriangulationAppend(string);
+        void OutputTriangulationStorage();
+        void DumpXYZConfig(string);
+        void DumpXYZConfigNormal(string);
+        void DumpXYZCheckerboard(string);
+        void DumpPhiNode(string);
+        void DumpAreaNode(string);
 
 };
 

@@ -17,14 +17,14 @@ using namespace std;
 #ifndef UTILITIES_
 #define UTILITIES_
 
-class utilities {
+class Utilities {
     public:
-        void linkMaxMin();
-        void energyNode(int);
-        void initializeEnergy();
-        void initializeEnergy_scale();
-        void energyNode_i(int);
-        void initializeEnergy_i();
+        void LinkMaxMin();
+        void EnergyNode(int);
+        void InitializeEnergy();
+        void InitializeEnergyScale();
+        void EnergyNode_i(int);
+        void InitializeEnergy_i();
 
 };
 

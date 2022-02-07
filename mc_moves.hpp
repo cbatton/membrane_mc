@@ -17,16 +17,16 @@ using namespace std;
 #ifndef MC_MOVES_
 #define MC_MOVES_
 
-class mc_moves {
+class MCMoves {
     public:
         void DisplaceStep(int = -1, int = 0);
         void TetherCut(int = -1, int = 0);
         void ChangeMassNonCon(int = -1, int = 0);
-        void ChangeMassNonCon_gl(int = -1);
+        void ChangeMassNonConGL(int = -1);
         void ChangeMassCon(int = -1, int = 0);
-        void ChangeMassCon_nl();
-        void moveProtein_gen(int, int);
-        void moveProtein_nl(int, int, int);
+        void ChangeMassConNL();
+        void MoveProteinGen(int, int);
+        void MoveProteinNL(int, int, int);
         void ChangeArea();
 
         double lambda = 0.0075; // Maximum percent change in displacement

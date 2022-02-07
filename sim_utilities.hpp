@@ -17,23 +17,22 @@ using namespace std;
 #ifndef SIM_UTILITIES_
 #define SIM_UTILITIES_
 
-class sim_utilities {
+class SimUtilities {
     public:
-        double wrapDistance_x(double, double);
-        double wrapDistance_y(double, double);
-        double lengthLink(int, int);
-        void areaNode(int);
-        void normalTriangle(int i, double normal[3]);
-        double cosineAngle(int, int, int); // Will use a different scheme here.....
+        double WrapDistance(double, double, double);
+        double LengthLink(int, int);
+        void AreaNode(int);
+        void NormalTriangle(int i, double normal[3]);
+        void ShuffleSaru(Saru&, vector<int>&);
 
         // Want to use one where I compute cotangents directly using cos, sin
-        double cosineAngle_norm(int, int, int);
-        void shuffle_saru(Saru&, vector<int>&);
-        double cotangent(double);
-        void acos_fast_initialize();
-        inline double acos_fast(double);
-        void cotangent_fast_initialize();
-        inline double cotangent_fast(double);
+        double CosineAngle(int, int, int); // Will use a different scheme here.....
+        double CosineAngleNorm(int, int, int);
+        double Cotangent(double);
+        void AcosFastInitialize();
+        inline double AcosFast(double);
+        void CotangentFastInitialize();
+        inline double CotangentFast(double);
 
         // Look up table variables
         const int look_up_density = 10001;

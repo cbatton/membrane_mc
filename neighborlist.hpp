@@ -17,10 +17,10 @@ using namespace std;
 #ifndef NEIGHBORLIST_
 #define NEIGHBORLIST_
 
-class neighborlist {
+class NeighborList {
     public:
-        void generateNeighborList();
-        void generateCheckerboard();
+        void GenerateNeighborList();
+        void GenerateCheckerboard();
 
         // Neighborlist
         vector<vector<int>> neighbor_list; // Neighbor list

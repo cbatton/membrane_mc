@@ -17,18 +17,18 @@ using namespace std;
 #ifndef INIT_SYSTEM_
 #define INIT_SYSTEM_
 
-class init_system {
+class InitSystem {
     public:
-        void initializeState();
-        void initializeEquilState();
-        void inputState();
+        void InitializeState();
+        void InitializeEquilState();
+        void InputState();
         void SaruSeed(unsigned int);
-        void generateTriangulation();
-        void generateTriangulationEquil();
-        inline int link_triangle_test(int, int);
-        inline void link_triangle_face(int, int, int *);
-        void useTriangulation(string);
-        void useTriangulationRestart(string);
+        void GenerateTriangulation();
+        void GenerateTriangulationEquil();
+        inline int LinkTriangleTest(int, int);
+        inline void LinkTriangleFace(int, int, int *);
+        void UseTriangulation(string);
+        void UseTriangulationRestart(string);
 
 };
 

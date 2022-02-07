@@ -17,13 +17,13 @@ using namespace std;
 #ifndef SIMULATION_
 #define SIMULATION_
 
-class simulation {
+class Simulation {
     public:
         void CheckerboardMCSweep(bool);
-        void nextStepSerial();
-        void nextStepParallel(bool);
-        void equilibriate(int, chrono::steady_clock::time_point&);
-        void simulate(int, chrono::steady_clock::time_point&);
+        void NextStepSerial();
+        void NextStepParallel(bool);
+        void Equilibriate(int, chrono::steady_clock::time_point&);
+        void Simulate(int, chrono::steady_clock::time_point&);
 
         int Cycles_eq = 1000001;
         int Cycles_prod = 1000001;

@@ -36,7 +36,7 @@ class MembraneMC {
         // Variables
         // Class variables
         shared_ptr<analyzers> analysis;
-        shared_ptr<init_system> initializer;
+        shared_ptr<init_system> initializer(this);
         shared_ptr<mc_moves> mc_mover;
         shared_ptr<neighborlist> nl;
         shared_ptr<output_system> output;
@@ -53,8 +53,6 @@ class MembraneMC {
         // Triangle properties
         int vertices = dim_x*dim_y;
         int faces = 2*dim_x*dim_y;
-        int active_vertices = vertices;
-        int active_faces = faces;
 
         // Triangulation radius values
         vector<vector<double> radii_tri;
@@ -108,13 +106,8 @@ class MembraneMC {
         double scale_xy = 1.0;
         double scale_xy_old = scale_xy;
         double num_frac = 0.5; // Number fraction of types
-        double scale = 1.0;
         double temp = 2.0; // Temperature
         double temp_list[2] = {2.0, 2.0};
-        int bins = 26;
-        int storage_time = 10;
-        int storage_neighor = 10;
-        int storage_umb_time = 100;
 
         // Protein variables
         vector<int> protein_node;

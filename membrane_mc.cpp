@@ -90,8 +90,6 @@ void MembraneMC::InputParam(int& argc, char* argv[]) { // Takes parameters from 
         getline(input, line);
         input >> line >> lambda_scale;
         getline(input, line);
-        input >> line >> scale;
-        getline(input, line);
         input >> line >> ising_values[0] >> ising_values[1] >> ising_values[2];
         getline(input, line);
         input >> line >> j_coupling[0][0] >> j_coupling[0][1] >> j_coupling[0][2]; 
@@ -153,7 +151,7 @@ void MembraneMC::InputParam(int& argc, char* argv[]) { // Takes parameters from 
         if(world_rank == 0) {
             cout << "seed_base is now " << seed_base << endl;
         }
-        SaruSeed(count_step);
+        initializer->SaruSeed(count_step);
         final_warning = final_time-60.0;
         spon_curv_end = spon_curv[2];
         spon_curv[2] = 0.0;
@@ -199,9 +197,9 @@ void MembraneMC::InputParam(int& argc, char* argv[]) { // Takes parameters from 
                 point_neighbor_triangle_original[i][j].resize(2,-1);
             }
         }
+        protein_node.resize(vertices,0);
         // Now Initialize utility classes
-        analysis = make_shared<analyzers>;
-        initializer = make_shared<init_system>;
+        analysis = make_shared<analyzers>(this, bins, storage_time, storage_neighor, storage_umb_time);
         mc_mover = make_shared<mc_moves>;
         nl = make_shared<neighborlist>;
         output = make_shared<output_system>;
@@ -232,7 +230,7 @@ void MembraneMC::Equilibriate(int cycles, chrono::steady_clock::time_point& begi
     double spon_curv_step = 4*spon_curv_end/cycles;
     int i=0;
     while(time_span_m.count() < final_warning) {
-        SaruSeed(count_step);
+        initializer->SaruSeed(count_step);
         count_step++;
         if(nl_move_start == 0) {
             nextStepParallel(false);
@@ -349,7 +347,7 @@ void MembraneMC::Simulate(int cycles, chrono::steady_clock::time_point& begin) {
     int i = 0;
     // for(int i=0; i<cycles; i++) {
     while(time_span_m.count() < final_warning) {
-        SaruSeed(count_step);
+        initializer->SaruSeed(count_step);
         count_step++;
 	    nextStepParallel(true);
 		if(i%1000==0) {

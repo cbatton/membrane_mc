@@ -22,8 +22,6 @@ class Simulation {
         void CheckerboardMCSweep(bool);
         void NextStepSerial();
         void NextStepParallel(bool);
-        void Equilibriate(int, chrono::steady_clock::time_point&);
-        void Simulate(int, chrono::steady_clock::time_point&);
 
         int Cycles_eq = 1000001;
         int Cycles_prod = 1000001;

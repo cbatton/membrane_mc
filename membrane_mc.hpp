@@ -24,9 +24,9 @@ using namespace std;
 #ifndef MMC_H_
 #define MMC_H_
 
-class membrane_mc {
+class MembraneMC {
     public:
-
+        // This class contains all the major generic functions I am going to call
         // Functions
         void InputParam();
         void Equilibriate(int, chrono::steady_clock::time_point&);
@@ -145,15 +145,7 @@ class membrane_mc {
         string output;
         string output_path;
         streambuf *myfilebuf;
-
-        // Testing
-        double max_diff = -1;
-        double relative_diff = 0;
-        // Now time to call all submodules
-        // Probably going to do dirty things with everything being cross-referenced
-        // Is it safer than a megafile? Probably not
-        // Easier to read? Probably
-        // *this is your friend to get a reference passing
+        ofstream my_cout;
 };
 
 #endif

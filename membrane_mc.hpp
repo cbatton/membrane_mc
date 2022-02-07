@@ -111,6 +111,10 @@ class MembraneMC {
         double scale = 1.0;
         double temp = 2.0; // Temperature
         double temp_list[2] = {2.0, 2.0};
+        int bins = 26;
+        int storage_time = 10;
+        int storage_neighor = 10;
+        int storage_umb_time = 100;
 
         // Protein variables
         vector<int> protein_node;

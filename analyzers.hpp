@@ -19,6 +19,8 @@ using namespace std;
 
 class Analyzers {
     public:
+        Analyzers();
+        ~Analyzers();
         void EnergyAnalyzer();
         void AreaAnalyzer();
         void AreaProjAnalyzer();
@@ -35,29 +37,31 @@ class Analyzers {
         void RhoSample();
         void RhoAnalyzer();
 
+        // MembraneMC pointer
+        MembraneMC* sys;
+
         // Storage variables
         int storage_time = 10;
-        int storage = Cycles_prod/storage_time;
+        int storage_neighbor =  10;
+        int storage_umb_time = 100;
         vector<double> energy_storage;
         vector<double> area_storage;
         vector<double> area_proj_storage;
         vector<double> mass_storage;
-        // Analyzer
-        int storage_neighbor =  10;
-        int storage_umb_time = 100;
-        int storage_umb = Cycles_prod/storage_umb_time;
-        int umb_counts = 0;
-        int neighbor_counts = 0;
         vector<vector<long long int>> numbers_neighbor;
         vector<double> energy_storage_umb;
         vector<double> energy_harmonic_umb;
+        // Analyzer counts
+        int storage_counts = 0;
+        int umb_counts = 0;
+        int neighbor_counts = 0;
 
         // Mean density from protein center variables
         int rdf_sample = 0;
         double mass_sample[3] = {0,0,0};
-        int bins[3] = {26,26,26};
-        double binSize[3] = {Length_x/(2*bins[0]),Length_x/(2*bins[1]),Length_x/(2*bins[2])};
-        vector<vector<vector<double>>> rho;
+        int bins = 26;
+        double bin_size = 10;
+        vector<vector<double>> rho;
 
         // Cluster data type
         struct cluster {

@@ -12,6 +12,14 @@
 #include <chrono>
 #include "membrane_mc.hpp"
 #include "saruprng.hpp"
+#include "analyzers.hpp"
+#include "init_system.hpp"
+#include "mc_moves.hpp"
+#include "neighborlist.hpp"
+#include "output_system.hpp"
+#include "simulation.hpp"
+#include "sim_utilities.hpp"
+#include "utilities.hpp"
 using namespace std;
 
 void MembraneMC::InputParam(int& argc, char* argv[]) { // Takes parameters from a file named param
@@ -52,9 +60,17 @@ void MembraneMC::InputParam(int& argc, char* argv[]) { // Takes parameters from 
         }
     }
     else{
+        // Temporary variables to pass to constructors
+        int bins = 26;
+        int storage_time = 10;
+        int storage_neighor = 10;
+        int storage_umb_time = 100;
+        // Read in everything
         input >> line >> dim_x >> dim_y >> endl;
         getline(input,line);
         input >> line >> cycles_eq >> cycles_prod;
+        getline(input, line);
+        input >> line >> storage_time >> storage_neighbor >> storage_umb_time;
         getline(input, line);
         input >> line >> lengths[0] >> lengths[1] >> lengths[2];
         getline(input,line);
@@ -97,6 +113,8 @@ void MembraneMC::InputParam(int& argc, char* argv[]) { // Takes parameters from 
         input >> line >> final_time;
         getline(input, line);
         input >> line >> nl_move_start;
+        getline(input, line);
+        input >> line >> bins;
         input.close();
         // Output variables for catching things
         if(world_rank == 0) {
@@ -123,6 +141,7 @@ void MembraneMC::InputParam(int& argc, char* argv[]) { // Takes parameters from 
             cout << "count_step is now " << count_step << endl;
             cout << "final_time is now " << final_time << endl;
             cout << "nl_move_start is now " << nl_move_start << endl;
+            cout << "bins is now " << bins << endl;
         }
         // Set lengths and seed_base
         lengths_old = lengths;
@@ -181,6 +200,14 @@ void MembraneMC::InputParam(int& argc, char* argv[]) { // Takes parameters from 
             }
         }
         // Now Initialize utility classes
+        analysis = make_shared<analyzers>;
+        initializer = make_shared<init_system>;
+        mc_mover = make_shared<mc_moves>;
+        nl = make_shared<neighborlist>;
+        output = make_shared<output_system>;
+        sim = make_shared<simulation>;
+        sim_util = make_shared<sim_utilities>;
+        util = make_shared<utilities>;
         // Storage variables
         storage = Cycles_prod/storage_time;
         energy_storage.resize(storage,0.0);

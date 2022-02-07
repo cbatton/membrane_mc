@@ -15,6 +15,40 @@
 #include "saruprng.hpp"
 using namespace std;
 
+Analyzers::Analyzers(MembraneMC *sys_, int bins_, int storage_time_, int storage_neighbor_, int storage_umb_time_) {
+    // Constructor
+    sys = sys_;
+    bins = bins_;
+    storage_time = storage_time_;
+    storage_neighbor = storage_neighbor_;
+    storage_umb_time = storage_umb_time_;
+    // Adjust size of storage variables
+    int storage = sys->cycles_prod/storage_time;
+    int storage_umb = sys->cycles_prod/storage_umb_time;
+    int storage_neighbor_total = sys->cycles_prod/storage_neighbor;
+    energy_storage.resize(storage,0.0);
+    area_storage.resize(storage,0.0);
+    area_proj_storage.resize(storage,0.0);
+    mass_storage.resize(storage,0.0);
+    energy_storage_umb.resize(storage_umb,0.0);
+    energy_harmonic_umb.resize(storage_umb,0.0);
+    vector<long long int> list_long;
+    numbers_neighbor.resize(neighbor_max,list_long);
+    for(int i=0; i<neighbor_max; i++) {
+        numbers_neighbor[i].resize(storage_neighbor_total);
+    }
+    // Adjust rho variables
+    vector<double> list(bins,0.0);
+    rho.resize(6,list);
+    bin_size = sys->lengths[0]/bins;
+    
+}
+
+Analyzers::~Analyzers() {
+    // Destructor
+    // Should need to do nothing here
+}
+
 void Analyzers::EnergyAnalyzer() {
     // Evaluate average
     double energy_ave = 0.0;
@@ -31,12 +65,12 @@ void Analyzers::EnergyAnalyzer() {
     energy_std = sqrt(energy_std/(storage_counts-1));
 
     ofstream myfile;
-    myfile.open (output_path+"/energy.txt", std::ios_base::app);
+    myfile.open (sys->output_path+"/energy.txt", std::ios_base::app);
     myfile << "Energy from simulation run" << endl;
     myfile << "Average " << std::scientific << energy_ave << " Standard deviation " << std::scientific << energy_std << endl;
     myfile.close();
 
-    myfile.open (output_path+"/energy_storage.txt", std::ios_base::app);
+    myfile.open (sys->output_path+"/energy_storage.txt", std::ios_base::app);
     myfile << "Energy from run" << endl;
     myfile.precision(8);
     for(int i=0; i<storage_counts; i+=10) {
@@ -61,13 +95,13 @@ void Analyzers::AreaAnalyzer() {
     area_std = sqrt(area_std/(storage_counts-1));
 
     ofstream myfile;
-    myfile.open (output_path+"/area.txt", std::ios_base::app);
+    myfile.open (sys->output_path+"/area.txt", std::ios_base::app);
     myfile.precision(17);
     myfile << "Area from simulation run" << endl;
     myfile << "Average " << std::scientific << area_ave << " Standard deviation " << std::scientific << area_std << endl;
     myfile.close();
 
-    myfile.open (output_path+"/area_storage.txt", std::ios_base::app);
+    myfile.open (sys->output_path+"/area_storage.txt", std::ios_base::app);
     myfile.precision(8);
     myfile << "Area from run" << endl;
     for(int i=0; i<storage_counts; i+=10) {
@@ -92,13 +126,13 @@ void Analyzers::AreaProjAnalyzer() {
     area_std = sqrt(area_std/(storage_counts-1));
 
     ofstream myfile;
-    myfile.open (output_path+"/area_proj.txt", std::ios_base::app);
+    myfile.open (sys->output_path+"/area_proj.txt", std::ios_base::app);
     myfile.precision(17);
     myfile << "Area from simulation run" << endl;
     myfile << "Average " << std::scientific << area_ave << " Standard deviation " << std::scientific << area_std << endl;
     myfile.close();
 
-    myfile.open (output_path+"/area_proj_storage.txt", std::ios_base::app);
+    myfile.open (sys->output_path+"/area_proj_storage.txt", std::ios_base::app);
     myfile.precision(8);
     myfile << "Area from run" << endl;
     for(int i=0; i<storage_counts; i+=10) {
@@ -123,13 +157,13 @@ void Analyzers::MassAnalyzer() {
     mass_std = sqrt(mass_std/(storage_counts-1));
 
     ofstream myfile;
-    myfile.open (output_path+"/mass.txt", std::ios_base::app);
+    myfile.open (sys->output_path+"/mass.txt", std::ios_base::app);
     myfile.precision(17);
     myfile << "Mass from simulation run" << endl;
     myfile << "Average " << std::scientific << mass_ave << " Standard deviation " << std::scientific << mass_std << endl;
     myfile.close();
 
-    myfile.open (output_path+"/mass_storage.txt", std::ios_base::app);
+    myfile.open (sys->output_path+"/mass_storage.txt", std::ios_base::app);
     myfile.precision(8);
     myfile << "Mass from run" << endl;
     for(int i=0; i<storage_counts; i+=10) {
@@ -146,20 +180,20 @@ void Analyzers::NumberNeighborsAnalyzer() {
     double number_neighbors_norm_ave[neighbor_max];
 
     cout << "In neighbors analyzer" << endl;
-    for(int j=0; j<neighbor_max; j++) {
+    for(int j=0; j<sys->neighbor_max; j++) {
         number_total[j] = 0;
     }
 
     for(int i=0; i<iter_total-1; i++) {
         number_iter[i] = 0;
-        for(int j=neighbor_min; j<neighbor_max; j++) {
+        for(int j=sys->neighbor_min; j<sys->neighbor_max; j++) {
             number_total[j] += numbers_neighbor[j][i];
             number_iter[i] += numbers_neighbor[j][i];
         }
     }
 
     long long int number_total_all = 0;
-    for(int i=0; i<neighbor_max; i++) {
+    for(int i=0; i<sys->neighbor_max; i++) {
         number_total_all += number_total[i];
         cout << i << " " << number_total[i] << endl;
     }
@@ -167,35 +201,35 @@ void Analyzers::NumberNeighborsAnalyzer() {
     cout << "Out of neighbors analyzer" << endl;
 
     for(int i=0; i<iter_total-1; i++) {
-        for(int j=neighbor_min; j<neighbor_max; j++) {
+        for(int j=sys->neighbor_min; j<sys->sys->neighbor_max; j++) {
             number_neighbors_norm[j][i] = double(numbers_neighbor[j][i])/double(number_iter[i]);
         }
     }
 
-    for(int i=neighbor_min; i<neighbor_max; i++) {
+    for(int i=sys->neighbor_min; i<sys->neighbor_max; i++) {
         number_neighbors_norm_ave[i] = double(number_total[i])/double(number_total_all);
     }
 
     // Evaluate standard deviation using Bessel's correction
-    double number_neighbors_std[neighbor_max];
-    for(int i=neighbor_min; i<neighbor_max; i++) {
+    double number_neighbors_std[sys->neighbor_max];
+    for(int i=sys->neighbor_min; i<sys->neighbor_max; i++) {
         number_neighbors_std[i] = 0;
     }
 
     for(int i=0; i<iter_total-1; i++) {
-        for(int j=neighbor_min; j<neighbor_max; j++) {
+        for(int j=sys->neighbor_min; j<sys->neighbor_max; j++) {
             number_neighbors_std[j] += pow(number_neighbors_norm_ave[j]-number_neighbors_norm[j][i],2);
         }
     }
 
-    for(int i=neighbor_min; i<neighbor_max; i++) {
+    for(int i=sys->neighbor_min; i<sys->neighbor_max; i++) {
         number_neighbors_std[i] = sqrt(number_neighbors_std[i]/(iter_total-1));
     }
 
     ofstream myfile;
-    myfile.open (output_path+"/number_neighbors_ave.txt", std::ios_base::app);
+    myfile.open (sys->output_path+"/number_neighbors_ave.txt", std::ios_base::app);
     myfile << "Neighbors from simulation run" << endl;
-    for(int i=0; i<neighbor_max; i++) {
+    for(int i=0; i<sys->neighbor_max; i++) {
         myfile << i << " average " << std::scientific << number_neighbors_norm_ave[i] << " standard deviation " << std::scientific << number_neighbors_std[i] << endl;
     }
     myfile.close();
@@ -211,7 +245,7 @@ void Analyzers::UmbAnalyzer() {
     energy_ave_umb = energy_ave_umb/umb_counts;
     ofstream myfile;
     myfile.precision(17);
-    myfile.open(output_path+"/mbar_data.txt", std::ios_base::app);
+    myfile.open(sys->output_path+"/mbar_data.txt", std::ios_base::app);
     for(int i=0; i<umb_counts; i++) {
         myfile << std::scientific << energy_harmonic_umb[i] << " " << std::scientific << energy_storage_umb[i] << endl;
     }
@@ -240,7 +274,7 @@ void Analyzers::SampleNumberNeighbors(int it) {
 
 void Analyzers::DumpNumberNeighbors(string name, int it) {
     ofstream myfile;
-    myfile.open (output_path+"/"+name, std::ios_base::app);
+    myfile.open (sys->output_path+"/"+name, std::ios_base::app);
     myfile << "# Neighbor at " << steps_tested_displace+steps_tested_tether+steps_tested_mass << endl;
     // Get normalization constant
     long long int number_total = 0;
@@ -287,7 +321,7 @@ void Analyzers::ClusterAnalysis() {
     // Turns off flushing of out before in
     cin.tie(NULL);
     ofstream myfile;
-    myfile.open (output_path+"/cluster.txt", std::ios_base::app);
+    myfile.open (sys->output_path+"/cluster.txt", std::ios_base::app);
     myfile << "# " << count_step << endl;
     for(int i=0; i<cluster_cur.cluster_list.size(); i++) {
         int protein_in_cluster = 0;
@@ -333,11 +367,11 @@ void Analyzers::ClusterDFS(int vertex_ind, int cluster_ind, cluster& cluster_cur
     // do recursive depth-first search
     cluster_cur.vertex_status[vertex_ind] = 0;
     cluster_cur.cluster_list[cluster_ind].push_back(vertex_ind);
-    for(int i=0; i<point_neighbor_max[vertex_ind]; i++) {
-        int neighbor = point_neighbor_list[vertex_ind][i];
+    for(int i=0; i<sys->point_neighbor_list[vertex_ind].size(); i++) {
+        int neighbor = sys->point_neighbor_list[vertex_ind][i];
         if(cluster_cur.vertex_status[neighbor] == -1) {
-            if(Ising_Array[neighbor] != 0) {
-                clusterDFS(neighbor, cluster_ind, cluster_cur);
+            if(sys->ising_array[neighbor] != 0) {
+                ClusterDFS(neighbor, cluster_ind, cluster_cur);
             }
         }
     }
@@ -386,7 +420,7 @@ void Analyzers::ClusterPostAnalysis() {
 
     ofstream myfile;
     myfile.precision(10);
-    myfile.open (output_path+"/cluster_analysis.txt", std::ios_base::app);
+    myfile.open (sys->output_path+"/cluster_analysis.txt", std::ios_base::app);
     myfile << "# Cluster analysis from simulation run" << endl;
     myfile << "MCN " << std::scientific << mean_cluster_number_ave << " " << std::scientific << mean_cluster_number_std << endl;
     myfile << "MCW " << std::scientific << mean_cluster_weight_ave << " " << std::scientific << mean_cluster_weight_std << endl;
@@ -395,7 +429,7 @@ void Analyzers::ClusterPostAnalysis() {
     myfile << "NC " << std::scientific << number_clusters_ave << " " << std::scientific << number_clusters_std << endl;
     myfile.close();
 
-    myfile.open (output_path+"/cluster_analysis_storage.txt", std::ios_base::app);
+    myfile.open (sys->output_path+"/cluster_analysis_storage.txt", std::ios_base::app);
     myfile << "# Cluster analysis from run" << endl;
     for(int i=0; i<storage_counts; i+=10) {
         myfile << std::scientific << mean_cluster_number[i] << " " << std::scientific << mean_cluster_weight[i] << " " << std::scientific << mean_cluster_number_protein[i] << " " << std::scientific << mean_cluster_weight_protein[i] << " " << number_clusters[i] << endl;
@@ -503,31 +537,27 @@ void Analyzers::RhoAnalyzer() {
     num_count[4] = mass_sample[0];
     num_count[5] = mass_sample[0];
     for(int k=0; k<6; k++) {
-        for(int j=0; j<1; j++) {
-            #pragma omp parallel for
-            for(int i=0; i<bins[j]; i++) {
-                area_change = (pow(i+1,2)-pow(i,2))*pow(binSize[j],2);
-                nIdeal = M_PI*area_change*rho_ideal[k];
-                rho[k][j][i] = rho[k][j][i]/(nIdeal*num_count[k]*rdf_sample);
-            }
+        #pragma omp parallel for
+        for(int i=0; i<bins; i++) {
+            area_change = (pow(i+1,2)-pow(i,2))*pow(bin_size,2);
+            nIdeal = M_PI*area_change*rho_ideal[k];
+            rho[k][i] = rho[k][i]/(nIdeal*num_count[k]*rdf_sample);
         }
     }
     // Output to file
     for(int k=0; k<6; k++) {
-        for(int j=0; j<1; j++) {
-            ofstream myfile;
-            myfile.precision(10);
-            myfile.open(output_path+"/rho_protein_"+to_string(k)+"_"+to_string(bins[j])+".txt", std::ios_base::app);
-            cout << "Bin size " << binSize[j] << endl;
-            for(int i=0; i<bins[j]; i++) {
-                myfile << binSize[j]*(i+0.5) << " " << std::scientific << rho[k][j][i] << endl;
-            }
-            myfile.close();
+        ofstream myfile;
+        myfile.precision(10);
+        myfile.open(sys->output_path+"/rho_protein_"+to_string(k)+".txt", std::ios_base::app);
+        cout << "Bin size " << bin_size << endl;
+        for(int i=0; i<bins; i++) {
+            myfile << bin_size*(i+0.5) << " " << std::scientific << rho[k][i] << endl;
         }
+        myfile.close();
     }
     // Output masses for post-processing
     ofstream myfile;
     myfile.precision(10);
-    myfile.open (output_path+"/rho_protein_mass.txt", std::ios_base::app);
+    myfile.open (sys->output_path+"/rho_protein_mass.txt", std::ios_base::app);
     myfile << std::scientific << mass_sample[0] << " " << std::scientific << mass_sample[1] << " " << std::scientific << mass_sample[2] << endl;
 }

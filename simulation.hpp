@@ -23,9 +23,6 @@ class Simulation {
         void NextStepSerial();
         void NextStepParallel(bool);
 
-        int Cycles_eq = 1000001;
-        int Cycles_prod = 1000001;
-
         // openmp stuff
         const int max_threads = omp_get_max_threads();
         int active_threads = 0;

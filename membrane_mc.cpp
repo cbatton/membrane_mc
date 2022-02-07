@@ -14,105 +14,184 @@
 #include "saruprng.hpp"
 using namespace std;
 
-void MembraneMC::InputParam() { // Takes parameters from a file named param
+void MembraneMC::InputParam(int& argc, char* argv[]) { // Takes parameters from a file named param
+    // MPI housekeeping
+    MPI_Comm_size(MPI_COMM_WORLD, &world_size);
+    MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
+    // Get local path
+    string path_file(argv[1]);
+    ifstream input_0;
+    input_0.open(path_file);
+    input_0 >> local_path;
+    input_0.close();
+    // Get path for each processor
+    string path_files(argv[2]);
+    rank_paths.resize(world_size);
+    ifstream input_1;
+    string line;
+    input_1.open(path_files);
+    for(int i=0; i<world_size; i++) {
+        input_1 >> rank_paths[i];
+        getline(input_1,line);
+    }
+    input_1.close();
+    // Set up output
+    string output = local_path+rank_paths[world_rank]+"/out";
+    output_path = local_path+rank_paths[world_rank];
+    my_cout.open(output, ios_base::app);
+
+    // Initialize OpenMP
+    active_threads = omp_get_max_threads();
+
     ifstream input;
     input.open(output_path+"/param");
-    cout.rdbuf(myfilebuf);
     // Check to see if param present. If not, do nothing
     if (input.fail()) {
-        cout << "No input file." << endl;
+        if(world_rank == 0) {
+            cout << "No input file." << endl;
+        }
     }
-
     else{
-        char buffer;
-        string line;
-        cout << "Param file detected. Changing values." << endl;
-        input >> line >> T_list[0] >> T_list[1];
-        cout << "T is now " << T_list[0] << " " << T_list[1] << endl;
+        input >> line >> dim_x >> dim_y >> endl;
+        getline(input,line);
+        input >> line >> cycles_eq >> cycles_prod;
+        getline(input, line);
+        input >> line >> lengths[0] >> lengths[1] >> lengths[2];
+        getline(input,line);
+        input >> line >> temp_list[0] >> temp_list[1];
         getline(input, line);
         input >> line >> k_b[0] >> k_b[1] >> k_b[2];
-        cout << "k_b is now " << k_b[0] << " " << k_b[1] << " " << k_b[2] << endl;
-        getline(input, line);
-        input >> line >> k_g[0] >> k_g[1] >> k_g[2];
-        cout << "k_g is now " << k_g[0] << " " << k_g[1] << " " << k_g[2] << endl;
-        getline(input, line);
-        input >> line >> k_a[0] >> k_a[1] >> k_a[2];
-        cout << "k_a is now " << k_a[0] << " " << k_a[1] << " " << k_a[2] << endl;
         getline(input, line);
         input >> line >> gamma_surf[0] >> gamma_surf[1] >> gamma_surf[2];
-        cout << "gamma_surf is now " << gamma_surf[0] << " " << gamma_surf[1] << " " << gamma_surf[2] << endl;
         getline(input, line);
         input >> line >> tau_frame;
-        cout << "tau_frame is now " << tau_frame << endl;
         getline(input, line);
         input >> line >> spon_curv[0] >> spon_curv[1] >> spon_curv[2]; 
-        cout << "Spontaneous curvature is now " << spon_curv[0] << " " << spon_curv[1] << " " << spon_curv[2] << endl;
         getline(input, line);
-        input >> line >> Length_x;
-        cout << "Length_x is now " << Length_x << endl;
-        getline(input, line);
-        input >> line >> Length_y;
-        cout << "Length_y is now " << Length_y << endl;
-        getline(input, line);
-        input >> line >> Length_z;
-        cout << "Length_z is now " << Length_z << endl;
+        input >> line >> Length_x >> Length_y >> Length_z;
         getline(input, line);
         input >> line >> lambda;
-        cout << "lambda is now " << lambda << endl;
         getline(input, line);
         input >> line >> lambda_scale;
-        cout << "lambda_scale is now " << lambda_scale << endl;
         getline(input, line);
         input >> line >> scale;
-        cout << "scale is now " << scale << endl;
         getline(input, line);
         input >> line >> ising_values[0] >> ising_values[1] >> ising_values[2];
-        cout << "ising_values is now " << ising_values[0] << " " << ising_values[1] << " " << ising_values[2] << endl;
         getline(input, line);
-        input >> line >> J_coupling[0][0] >> J_coupling[0][1] >> J_coupling[0][2]; 
+        input >> line >> j_coupling[0][0] >> j_coupling[0][1] >> j_coupling[0][2]; 
         getline(input, line);
-        input >> J_coupling[1][0] >> J_coupling[1][1] >> J_coupling[1][2];
+        input >> j_coupling[1][0] >> j_coupling[1][1] >> j_coupling[1][2];
         getline(input, line);
-        input >> J_coupling[2][0] >> J_coupling[2][1] >> J_coupling[2][2];
-        cout << "J is now " << J_coupling[0][0] << " " << J_coupling[0][1] << " " << J_coupling[0][2] << endl;
-        cout << "\t" << J_coupling[1][0] << " " << J_coupling[1][1] << " " << J_coupling[1][2] << endl;
-        cout << "\t" << J_coupling[2][0] << " " << J_coupling[2][1] << " " << J_coupling[2][2] << endl;
+        input >> j_coupling[2][0] >> j_coupling[2][1] >> j_coupling[2][2];
         getline(input, line);
         input >> line >> h_external;
-        cout << "h is now " << h_external << endl;
         getline(input, line);
         input >> line >> num_frac;
-        cout << "num_frac is now " << num_frac << endl;
         getline(input, line);
         input >> line >> num_proteins;
-        cout << "num_proteins is now " << num_proteins << endl;
         getline(input, line);
         input >> line >> seed_base;
-        cout << "seed_base is now " << seed_base << endl;
         getline(input, line);
         input >> line >> count_step;
-        cout << "count_step is now " << count_step << endl;
         getline(input, line);
         input >> line >> final_time;
-        cout << "final_time is now " << final_time << endl;
         getline(input, line);
         input >> line >> nl_move_start;
-        cout << "nl_move_start is now " << nl_move_start << endl;
         input.close();
-        Length_x_old = Length_x;
-        Length_y_old = Length_y;
-        Length_z_old = Length_z;
-        Length_x_base = Length_x;
-        Length_y_base = Length_y;
+        // Output variables for catching things
+        if(world_rank == 0) {
+            cout << "Param file detected. Changing values." << endl;
+            cout << "Dimensions is now " << dim_x << " " << dim_y << endl;
+            cout << "Cycles is now " << cycles_eq << " " << cycles_prod << endl;
+            cout << "Temperature is now " << temp_list[0] << " " << temp_list[1] << endl;
+            cout << "k_b is now " << k_b[0] << " " << k_b[1] << " " << k_b[2] << endl;
+            cout << "gamma_surf is now " << gamma_surf[0] << " " << gamma_surf[1] << " " << gamma_surf[2] << endl;
+            cout << "tau_frame is now " << tau_frame << endl;
+            cout << "Spontaneous curvature is now " << spon_curv[0] << " " << spon_curv[1] << " " << spon_curv[2] << endl;
+            cout << "Lengths is now " << lengths[0] << " " << lengths[1] << " " << lengths[2] << endl;
+            cout << "lambda is now " << lambda << endl;
+            cout << "lambda_scale is now " << lambda_scale << endl;
+            cout << "scale is now " << scale << endl;
+            cout << "ising_values is now " << ising_values[0] << " " << ising_values[1] << " " << ising_values[2] << endl;
+            cout << "J is now " << j_coupling[0][0] << " " << j_coupling[0][1] << " " << j_coupling[0][2] << endl;
+            cout << "\t" << j_coupling[1][0] << " " << j_coupling[1][1] << " " << j_coupling[1][2] << endl;
+            cout << "\t" << j_coupling[2][0] << " " << j_coupling[2][1] << " " << j_coupling[2][2] << endl;
+            cout << "h is now " << h_external << endl;
+            cout << "num_frac is now " << num_frac << endl;
+            cout << "num_proteins is now " << num_proteins << endl;
+            cout << "seed_base is now " << seed_base << endl;
+            cout << "count_step is now " << count_step << endl;
+            cout << "final_time is now " << final_time << endl;
+            cout << "nl_move_start is now " << nl_move_start << endl;
+        }
+        // Set lengths and seed_base
+        lengths_old = lengths;
+        lengths_base = lengths;
         // Hash seed_base
         seed_base = seed_base*0x12345677 + 0x12345;
         seed_base = seed_base^(seed_base>>16);
         seed_base = seed_base*0x45679;
-        cout << "seed_base is now " << seed_base << endl;
+        if(world_rank == 0) {
+            cout << "seed_base is now " << seed_base << endl;
+        }
         SaruSeed(count_step);
         final_warning = final_time-60.0;
         spon_curv_end = spon_curv[2];
         spon_curv[2] = 0.0;
+        // Initialize things
+        vertices = dim_x*dim_y;
+        faces = 2*vertices;
+        // Particle variables
+        radii_tri.resize(vertices,vector<double>(3,0.0));
+        radii_tri_original.resize(vertices,vector<double>(3,0.0));
+        ising_array.resize(vertices,0);
+        phi_vertex.resize(vertices,0.0);
+        phi_vertex_original.resize(vertices,0.0);
+        mean_curvature_vertex.resize(vertices,0.0);
+        mean_curvature_vertex_original.resize(vertices,0.0);
+        area_vertex.resize(vertices,0.0);
+        area_vertex_original.resize(vertices,0.0);
+        area_faces.resize(faces,0.0);
+        area_faces_original.resize(faces,0.0);
+        // Triangle variables
+        vector<int> list_int;
+        triangle_list.resize(faces,list_int);
+        triangle_list_original.resize(faces,list_int);
+        for(int i=0; i<faces; i++) {
+            triangle_list[i].resize(3,0);
+            triangle_list_original[i].resize(3,0);
+        }
+        point_neighbor_list.resize(vertices,list_int);
+        point_neighbor_list_original.resize(vertices,list_int);
+        point_triangle_list.resize(vertices,list_int);
+        point_triangle_list_original.resize(vertices,list_int);
+        vector<vector<int>> list_int_int;
+        point_neighbor_triangle.resize(vertices,list_int_int);
+        point_neighbor_triangle_original.resize(vertices,list_int_int);
+        for(int i=0; i<vertices; i++) {
+            point_neighbor_list[i].resize(neighbor_max,-1);
+            point_neighbor_list_original[i].resize(neighbor_max,-1);
+            point_triangle_list[i].resize(neighbor_max,-1);
+            point_triangle_list_original[i].resize(neighbor_max,-1);
+            point_neighbor_triangle[i].resize(neighbor_max,list_int);
+            point_neighbor_triangle_original[i].resize(neighbor_max,list_int);
+            for(int j=0; j<neighbor_max; j++) {
+                point_neighbor_triangle[i][j].resize(2,-1);
+                point_neighbor_triangle_original[i][j].resize(2,-1);
+            }
+        }
+        // Now Initialize utility classes
+        // Storage variables
+        storage = Cycles_prod/storage_time;
+        energy_storage.resize(storage,0.0);
+        area_storage.resize(storage,0.0);
+        area_proj_storage.resize(storage,0.0);
+        mass_storage.resize(storage,0.0);
+        vector<long long int> list_long;
+        numbers_neighbor.resize(neighbor_max,list_long);
+        for(int i=0; i<neighbor_max; i++) {
+            numbers_neighbor[i].resize(Cycles_prod/storage_neighbor);
+        }
     }
 }
 

@@ -19,6 +19,8 @@ using namespace std;
 
 class MCMoves {
     public:
+        MCMoves(MembraneMC*);
+        ~MCMoves();
         void DisplaceStep(int = -1, int = 0);
         void TetherCut(int = -1, int = 0);
         void ChangeMassNonCon(int = -1, int = 0);
@@ -45,9 +47,18 @@ class MCMoves {
         long long int steps_rejected_eq = 0;
         long long int steps_tested_prod = 0;
         long long int steps_rejected_prod = 0;
+        int steps_tested_displace_thread[max_threads][8];
+        int steps_rejected_displace_thread[max_threads][8];
+        int steps_tested_tether_thread[max_threads][8];
+        int steps_rejected_tether_thread[max_threads][8];
+        int steps_tested_mass_thread[max_threads][8];
+        int steps_rejected_mass_thread[max_threads][8];
+        int steps_tested_protein_thread[max_threads][8];
+        int steps_rejected_protein_thread[max_threads][8];
         // nl move parameter
         int nl_move_start = 0;
-
+        // MembraneMC pointer
+        MembraneMC* sys;
 };
 
 #endif

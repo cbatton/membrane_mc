@@ -35,14 +35,14 @@ class MembraneMC {
         void OutputAnalyzers();
         // Variables
         // Class variables
-        shared_ptr<analyzers> analysis;
-        shared_ptr<init_system> initializer(this);
-        shared_ptr<mc_moves> mc_mover;
-        shared_ptr<neighborlist> nl;
-        shared_ptr<output_system> output;
-        shared_ptr<simulation> sim;
-        shared_ptr<sim_utilities> sim_util;
-        shared_ptr<utilities> util;
+        shared_ptr<Analyzers> analysis;
+        shared_ptr<InitSystem> initializer(this);
+        shared_ptr<MCMoves> mc_mover;
+        shared_ptr<NeighborList> nl;
+        shared_ptr<OutputSystem> output;
+        shared_ptr<Simulation> sim;
+        shared_ptr<SimUtilities> sim_util;
+        shared_ptr<Utilities> util;
         // Variables
         // Initial mesh is points distributed in rectangular grid
         int dim_x = 200; // Nodes in x direction
@@ -79,13 +79,13 @@ class MembraneMC {
         vector<double> mean_curvature_vertex_original;
         vector<double> sigma_vertex;
         vector<double> sigma_vertex_original;
+        vector<double> area_faces;
+        vector<double> area_faces_original;
         double phi = 0.0; // Energy at current step
         double phi_phi = 0.0; // Composition energy at current step
         double phi_bending = 0.0; // Bending energy at current step
         int mass = 0;
         double magnet = 0;
-        vector<double> area_faces;
-        vector<double> area_faces_original;
         double area_total;
         double sigma_i_total = 0.0;
         double area_proj_average;

@@ -86,9 +86,9 @@ void MembraneMC::InputParam(int& argc, char* argv[]) { // Takes parameters from 
         getline(input, line);
         input >> line >> Length_x >> Length_y >> Length_z;
         getline(input, line);
-        input >> line >> lambda;
+        input >> line >> mc_mover->lambda;
         getline(input, line);
-        input >> line >> lambda_scale;
+        input >> line >> mc_mover->lambda_scale;
         getline(input, line);
         input >> line >> ising_values[0] >> ising_values[1] >> ising_values[2];
         getline(input, line);
@@ -110,7 +110,7 @@ void MembraneMC::InputParam(int& argc, char* argv[]) { // Takes parameters from 
         getline(input, line);
         input >> line >> final_time;
         getline(input, line);
-        input >> line >> nl_move_start;
+        input >> line >> mc_mover->nl_move_start;
         getline(input, line);
         input >> line >> bins;
         input.close();
@@ -125,8 +125,8 @@ void MembraneMC::InputParam(int& argc, char* argv[]) { // Takes parameters from 
             cout << "tau_frame is now " << tau_frame << endl;
             cout << "Spontaneous curvature is now " << spon_curv[0] << " " << spon_curv[1] << " " << spon_curv[2] << endl;
             cout << "Lengths is now " << lengths[0] << " " << lengths[1] << " " << lengths[2] << endl;
-            cout << "lambda is now " << lambda << endl;
-            cout << "lambda_scale is now " << lambda_scale << endl;
+            cout << "lambda is now " << mc_mover->lambda << endl;
+            cout << "lambda_scale is now " << mc_mover->lambda_scale << endl;
             cout << "scale is now " << scale << endl;
             cout << "ising_values is now " << ising_values[0] << " " << ising_values[1] << " " << ising_values[2] << endl;
             cout << "J is now " << j_coupling[0][0] << " " << j_coupling[0][1] << " " << j_coupling[0][2] << endl;
@@ -138,7 +138,7 @@ void MembraneMC::InputParam(int& argc, char* argv[]) { // Takes parameters from 
             cout << "seed_base is now " << seed_base << endl;
             cout << "count_step is now " << count_step << endl;
             cout << "final_time is now " << final_time << endl;
-            cout << "nl_move_start is now " << nl_move_start << endl;
+            cout << "nl_move_start is now " << mc_mover->nl_move_start << endl;
             cout << "bins is now " << bins << endl;
         }
         // Set lengths and seed_base
@@ -198,25 +198,18 @@ void MembraneMC::InputParam(int& argc, char* argv[]) { // Takes parameters from 
             }
         }
         protein_node.resize(vertices,0);
+        // Use initializer to handle system initialization
+        initializer->InitializeEquilState();
+        initializer->GenerateTriangulationEquil();
+        initializer->UseTriangulation("out.off");
         // Now Initialize utility classes
-        analysis = make_shared<analyzers>(this, bins, storage_time, storage_neighor, storage_umb_time);
-        mc_mover = make_shared<mc_moves>;
-        nl = make_shared<neighborlist>;
-        output = make_shared<output_system>;
-        sim = make_shared<simulation>;
-        sim_util = make_shared<sim_utilities>;
-        util = make_shared<utilities>;
-        // Storage variables
-        storage = Cycles_prod/storage_time;
-        energy_storage.resize(storage,0.0);
-        area_storage.resize(storage,0.0);
-        area_proj_storage.resize(storage,0.0);
-        mass_storage.resize(storage,0.0);
-        vector<long long int> list_long;
-        numbers_neighbor.resize(neighbor_max,list_long);
-        for(int i=0; i<neighbor_max; i++) {
-            numbers_neighbor[i].resize(Cycles_prod/storage_neighbor);
-        }
+        analysis = make_shared<Analyzers>(this, bins, storage_time, storage_neighor, storage_umb_time);
+        mc_mover = make_shared<MCMoves>;
+        nl = make_shared<NeighborList>;
+        output = make_shared<OutputSystem>;
+        sim = make_shared<Simulation>;
+        sim_util = make_shared<SimUtilities>;
+        util = make_shared<Utilities>;
     }
 }
 

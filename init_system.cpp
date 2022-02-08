@@ -21,6 +21,11 @@ InitSystem::InitSystem(MembraneMC* sys_) {
     sys = sys_;
 }
 
+InitSystem::~InitSystem() {
+    // Destructor
+    // Does nothing
+}
+
 void InitSystem::InitializeEquilState() {
     // Create two layers of points that will triangulate to form a mesh of equilateral triangle
     // Layer one

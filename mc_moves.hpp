@@ -24,9 +24,7 @@ class MCMoves {
         void DisplaceStep(int = -1, int = 0);
         void TetherCut(int = -1, int = 0);
         void ChangeMassNonCon(int = -1, int = 0);
-        void ChangeMassNonConGL(int = -1);
         void ChangeMassCon(int = -1, int = 0);
-        void ChangeMassConNL();
         void MoveProteinGen(int, int);
         void MoveProteinNL(int, int, int);
         void ChangeArea();

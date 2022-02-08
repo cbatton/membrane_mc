@@ -557,7 +557,7 @@ void MCMoves::TetherCut(int vertex_trial, int thread_id) {
 void MCMoves::ChangeMassNonCon(int vertex_trial, int thread_id) {
     // Pick random site and change the Ising array value
     // Non-mass conserving
-    Saru& local_generator = generators[thread_id];
+    Saru& local_generator = sys->generators[thread_id];
     // Have to have implementation that chooses from within the same checkerboard set
     if(sys->ising_array[vertex_trial] == 2) {
         // If protein node is selected, do a moveProtein_gen move instead
@@ -565,34 +565,35 @@ void MCMoves::ChangeMassNonCon(int vertex_trial, int thread_id) {
         return;
 	} 
     // Change spin
-    int sys->ising_array_trial = 0;
+    int ising_array_trial = 0;
     if(sys->ising_array[vertex_trial] == 0){
-        sys->ising_array_trial = 1;
+        ising_array_trial = 1;
     }
 
     double phi_diff_phi = 0;
 
     for(int j=0; j<sys->point_neighbor_list[vertex_trial].size(); j++) {
         double Site_diff = sys->j_coupling[sys->ising_array[vertex_trial]][sys->ising_array[sys->point_neighbor_list[vertex_trial][j]]]*sys->ising_values[sys->ising_array[vertex_trial]];
-        double Site_diff_2 = sys->j_coupling[sys->ising_array_trial][sys->ising_array[sys->point_neighbor_list[vertex_trial][j]]]*sys->ising_values[sys->ising_array_trial];
+        double Site_diff_2 = sys->j_coupling[ising_array_trial][sys->ising_array[sys->point_neighbor_list[vertex_trial][j]]]*sys->ising_values[ising_array_trial];
         phi_diff_phi -= (Site_diff_2-Site_diff)*sys->ising_values[sys->ising_array[sys->point_neighbor_list[vertex_trial][j]]];
     }    
     
     // External field effect
-    double phi_diff_mag = -h_external*(sys->ising_values[sys->ising_array_trial]-sys->ising_values[sys->ising_array[vertex_trial]]);    
+    double phi_diff_mag = -h_external*(sys->ising_values[ising_array_trial]-sys->ising_values[sys->ising_array[vertex_trial]]);    
     // Evaluate energy difference due to types swapping from mean curvature, surface tension
-    double diff_curv = sys->mean_curvature_vertex[vertex_trial]-spon_curv[sys->ising_array_trial];
-    sys->phi_vertex[vertex_trial] = k_b[sys->ising_array_trial]*sys->sigma_vertex[vertex_trial]*diff_curv*diff_curv;
+    double diff_curv = sys->mean_curvature_vertex[vertex_trial]-sys->spon_curv[ising_array_trial];
+    sys->phi_vertex[vertex_trial] = sys->k_b[ising_array_trial]*sys->sigma_vertex[vertex_trial]*diff_curv*diff_curv;
     double phi_diff_bending = sys->phi_vertex[vertex_trial] - sys->phi_vertex_original[vertex_trial];
     double phi_diff = phi_diff_phi+phi_diff_bending+phi_diff_mag;
+    phi_diff += (sys->gamma_surf[ising_array_trial]-sys->gamma_surf[sys->ising_array[vertex_trial]])*sys->sigma_vertex[vertex_trial];
     double chance = local_generator.d();
-    if(chance<exp(-phi_diff/T)){
+    if(chance<exp(-phi_diff/sys->temp)){
         sys->sim->phi_diff_thread[thread_id][0] += phi_diff;
         sys->sim->phi_bending_diff_thread[thread_id][0] += phi_diff_bending;
-        phi_sys->sim->phi_diff_thread[thread_id][0] += phi_diff_phi;
-        mass_diff_thread[thread_id][0] += (sys->ising_array_trial-sys->ising_array[vertex_trial]);
-        magnet_diff_thread[thread_id][0] += (sys->ising_values[sys->ising_array_trial]-sys->ising_values[sys->ising_array[vertex_trial]]);
-        sys->ising_array[vertex_trial] = sys->ising_array_trial;
+        sys->sim->phi_phi_diff_thread[thread_id][0] += phi_diff_phi;
+        mass_diff_thread[thread_id][0] += (ising_array_trial-sys->ising_array[vertex_trial]);
+        magnet_diff_thread[thread_id][0] += (sys->ising_values[ising_array_trial]-sys->ising_values[sys->ising_array[vertex_trial]]);
+        sys->ising_array[vertex_trial] = ising_array_trial;
         sys->phi_vertex_original[vertex_trial] = sys->phi_vertex[vertex_trial];
     }
     
@@ -603,58 +604,10 @@ void MCMoves::ChangeMassNonCon(int vertex_trial, int thread_id) {
     steps_tested_mass_thread[thread_id][0] += 1;
 }
 
-void MCMoves::ChangeMassNonConGL(int vertex_trial) {
-    // Pick random site and change the Ising array value per Glauber dynamics
-    // Non-mass conserving
-    Saru& local_generator = generators[omp_get_thread_num()];
-    while (sys->ising_array[vertex_trial] == 2) {
-		vertex_trial = local_generator.rand_select(sys->vertices-1);
-	}
-    // Change spin
-    int sys->ising_array_trial = 0;
-    if(sys->ising_array[vertex_trial] == 0){
-        sys->ising_array_trial = 1;
-    }
-
-    double phi_magnet = 0;
-
-    for(int j=0; j<sys->point_neighbor_list[vertex_trial].size(); j++) {
-        double Site_diff = sys->j_coupling[sys->ising_array[vertex_trial]][sys->ising_array[sys->point_neighbor_list[vertex_trial][j]]]*sys->ising_values[sys->ising_array[vertex_trial]];
-        double Site_diff_2 = sys->j_coupling[sys->ising_array_trial][sys->ising_array[sys->point_neighbor_list[vertex_trial][j]]]*sys->ising_values[sys->ising_array_trial];
-        phi_magnet -= (Site_diff_2-Site_diff)*sys->ising_values[sys->ising_array[sys->point_neighbor_list[vertex_trial][j]]];
-    }    
-    
-    // External field effect
-    phi_magnet -= h_external*(sys->ising_values[sys->ising_array_trial]-sys->ising_values[sys->ising_array[vertex_trial]]);    
-    // Evaluate energy difference due to types swapping from mean curvature, surface tension
-    double diff_curv = sys->mean_curvature_vertex[vertex_trial]-spon_curv[sys->ising_array_trial];
-    sys->phi_vertex[vertex_trial] = k_b[sys->ising_array_trial]*sys->sigma_vertex[vertex_trial]*diff_curv*diff_curv;
-    double phi_diff = phi_magnet + sys->phi_vertex[vertex_trial] - sys->phi_vertex_original[vertex_trial];
-    double chance = local_generator.d();
-    if(chance<(1.0/(1.0+exp(phi_diff/T)))) {
-        #pragma omp atomic
-        phi += phi_diff;
-        #pragma omp atomic
-        Mass += (sys->ising_array_trial-sys->ising_array[vertex_trial]);
-        #pragma omp atomic
-        Magnet += (sys->ising_values[sys->ising_array_trial]-sys->ising_values[sys->ising_array[vertex_trial]]);
-        sys->ising_array[vertex_trial] = sys->ising_array_trial;
-        sys->phi_vertex_original[vertex_trial] = sys->phi_vertex[vertex_trial];
-    }
-    
-    else {
-        #pragma omp atomic
-        steps_rejected_mass += 1;
-        sys->phi_vertex[vertex_trial] = sys->phi_vertex_original[vertex_trial];    
-    }
-    #pragma omp atomic
-    steps_tested_mass += 1;
-}
-
 void MCMoves::ChangeMassCon(int vertex_trial, int thread_id) {
     // Pick random site and attemp to swap Ising array value with array in random nearest neighbor direction
     // Mass conserving
-    Saru& local_generator = generators[thread_id];
+    Saru& local_generator = sys->generators[thread_id];
     if(sys->ising_array[vertex_trial] == 2) {
         // If protein node is selected, do a moveProtein_gen move instead
         moveProtein_gen(vertex_trial, thread_id);
@@ -672,53 +625,55 @@ void MCMoves::ChangeMassCon(int vertex_trial, int thread_id) {
     }
 
     // Check to see if vertex_trial_opposite is not in same checkerboard set
-    if(checkerboard_index[vertex_trial] != checkerboard_index[vertex_trial_opposite]) {
+    if(sys->nl->checkerboard_index[vertex_trial] != sys->nl->checkerboard_index[vertex_trial_opposite]) {
         steps_rejected_mass_thread[thread_id][0] += 1;
     	steps_tested_mass_thread[thread_id][0] += 1;
 		return;
     }
 
     // Set trial values
-    int sys->ising_array_trial_1 = sys->ising_array[vertex_trial_opposite];
-    int sys->ising_array_trial_2 = sys->ising_array[vertex_trial];
+    int ising_array_trial_1 = sys->ising_array[vertex_trial_opposite];
+    int ising_array_trial_2 = sys->ising_array[vertex_trial];
 
     // Now actually swap. We'll evaluate the energy difference using the neighboring stencil for each. Note this double counts trial, trial_2 so we'll need to add that part back in twice
     double phi_diff_phi = 0;
     for(int j=0; j<sys->point_neighbor_list[vertex_trial].size(); j++) {
         double Site_diff = sys->j_coupling[sys->ising_array[vertex_trial]][sys->ising_array[sys->point_neighbor_list[vertex_trial][j]]]*sys->ising_values[sys->ising_array[vertex_trial]];
-        double Site_diff_2 = sys->j_coupling[sys->ising_array_trial_1][sys->ising_array[sys->point_neighbor_list[vertex_trial][j]]]*sys->ising_values[sys->ising_array_trial_1];
+        double Site_diff_2 = sys->j_coupling[ising_array_trial_1][sys->ising_array[sys->point_neighbor_list[vertex_trial][j]]]*sys->ising_values[ising_array_trial_1];
         phi_diff_phi -= (Site_diff_2-Site_diff)*sys->ising_values[sys->ising_array[sys->point_neighbor_list[vertex_trial][j]]];
     }    
     
     // Evaluate energy difference due to types swapping from mean curvature, surface tension
-    double diff_curv_v = sys->mean_curvature_vertex[vertex_trial]-spon_curv[sys->ising_array_trial_1];
-    sys->phi_vertex[vertex_trial] = k_b[sys->ising_array_trial_1]*sys->sigma_vertex[vertex_trial]*diff_curv_v*diff_curv_v;
+    double diff_curv_v = sys->mean_curvature_vertex[vertex_trial]-sys->spon_curv[ising_array_trial_1];
+    sys->phi_vertex[vertex_trial] = sys->k_b[ising_array_trial_1]*sys->sigma_vertex[vertex_trial]*diff_curv_v*diff_curv_v;
 
     // Trial 2
     for(int j=0; j<point_neighbor_max[vertex_trial_opposite]; j++) {
         double Site_diff = sys->j_coupling[sys->ising_array[vertex_trial_opposite]][sys->ising_array[sys->point_neighbor_list[vertex_trial_opposite][j]]]*sys->ising_values[sys->ising_array[vertex_trial_opposite]];
-        double Site_diff_2 = sys->j_coupling[sys->ising_array_trial_2][sys->ising_array[sys->point_neighbor_list[vertex_trial_opposite][j]]]*sys->ising_values[sys->ising_array_trial_2];
+        double Site_diff_2 = sys->j_coupling[ising_array_trial_2][sys->ising_array[sys->point_neighbor_list[vertex_trial_opposite][j]]]*sys->ising_values[ising_array_trial_2];
         phi_diff_phi -= (Site_diff_2-Site_diff)*sys->ising_values[sys->ising_array[sys->point_neighbor_list[vertex_trial_opposite][j]]];
     }    
     
     // Evaluate energy difference due to types swapping from mean curvature, surface tension
-    double diff_curv_c = sys->mean_curvature_vertex[vertex_trial_opposite]-spon_curv[sys->ising_array_trial_2];
-    sys->phi_vertex[vertex_trial_opposite] = k_b[sys->ising_array_trial_2]*sys->sigma_vertex[vertex_trial_opposite]*diff_curv_c*diff_curv_c;
+    double diff_curv_c = sys->mean_curvature_vertex[vertex_trial_opposite]-sys->spon_curv[ising_array_trial_2];
+    sys->phi_vertex[vertex_trial_opposite] = sys->k_b[ising_array_trial_2]*sys->sigma_vertex[vertex_trial_opposite]*diff_curv_c*diff_curv_c;
 
     // Now add in self contribution to cancel that out 
-    phi_diff_phi += (sys->j_coupling[sys->ising_array_trial_1][sys->ising_array[vertex_trial_opposite]]*sys->ising_values[sys->ising_array_trial_1]-sys->j_coupling[sys->ising_array[vertex_trial]][sys->ising_array[vertex_trial_opposite]]*sys->ising_values[sys->ising_array[vertex_trial]])*sys->ising_values[sys->ising_array[vertex_trial_opposite]];
-    phi_diff_phi += (sys->j_coupling[sys->ising_array_trial_2][sys->ising_array[vertex_trial]]*sys->ising_values[sys->ising_array_trial_2]-sys->j_coupling[sys->ising_array[vertex_trial_opposite]][sys->ising_array[vertex_trial]]*sys->ising_values[sys->ising_array[vertex_trial_opposite]])*sys->ising_values[sys->ising_array[vertex_trial]];
+    phi_diff_phi += (sys->j_coupling[ising_array_trial_1][sys->ising_array[vertex_trial_opposite]]*sys->ising_values[ising_array_trial_1]-sys->j_coupling[sys->ising_array[vertex_trial]][sys->ising_array[vertex_trial_opposite]]*sys->ising_values[sys->ising_array[vertex_trial]])*sys->ising_values[sys->ising_array[vertex_trial_opposite]];
+    phi_diff_phi += (sys->j_coupling[ising_array_trial_2][sys->ising_array[vertex_trial]]*sys->ising_values[ising_array_trial_2]-sys->j_coupling[sys->ising_array[vertex_trial_opposite]][sys->ising_array[vertex_trial]]*sys->ising_values[sys->ising_array[vertex_trial_opposite]])*sys->ising_values[sys->ising_array[vertex_trial]];
 
     double phi_diff_bending = sys->phi_vertex[vertex_trial] - sys->phi_vertex_original[vertex_trial];
     phi_diff_bending += sys->phi_vertex[vertex_trial_opposite] - sys->phi_vertex_original[vertex_trial_opposite];
     double phi_diff = phi_diff_bending+phi_diff_phi;
+    phi_diff += (sys->gamma_surf[ising_array_trial]-sys->gamma_surf[sys->ising_array[vertex_trial]])*sys->sigma_vertex[vertex_trial];
+    phi_diff += (sys->gamma_surf[ising_array_trial_2]-sys->gamma_surf[sys->ising_array[vertex_trial_opposite]])*sys->sigma_vertex[vertex_trial_opposite];
     double chance = local_generator.d();
-    if(chance<exp(-phi_diff/T)){
+    if(chance<exp(-phi_diff/sys->temp)){
         sys->sim->phi_diff_thread[thread_id][0] += phi_diff;
         sys->sim->phi_bending_diff_thread[thread_id][0] += phi_diff_bending;
-        phi_sys->sim->phi_diff_thread[thread_id][0] += phi_diff_phi;
-        sys->ising_array[vertex_trial] = sys->ising_array_trial_1;
-        sys->ising_array[vertex_trial_opposite] = sys->ising_array_trial_2;
+        sys->sim->phi_phi_diff_thread[thread_id][0] += phi_diff_phi;
+        sys->ising_array[vertex_trial] = ising_array_trial_1;
+        sys->ising_array[vertex_trial_opposite] = ising_array_trial_2;
         sys->phi_vertex_original[vertex_trial] = sys->phi_vertex[vertex_trial];
         sys->phi_vertex_original[vertex_trial_opposite] = sys->phi_vertex[vertex_trial_opposite];
     }
@@ -732,139 +687,70 @@ void MCMoves::ChangeMassCon(int vertex_trial, int thread_id) {
 
 }
 
-void MCMoves::ChangeMassConNL() {
-    // Pick random site and attemp to swap Ising array value with another nonlocal site
-    // Mass conserving
-    // Can't think of a good parallel implementation for now
-    Saru& local_generator = generators[omp_get_thread_num()];
-    int vertex_trial = local_generator.rand_select(sys->vertices-1);
-    // Pick random site with opposite spin
-    int vertex_trial_2 = local_generator.rand_select(sys->vertices-1);
-
-    // Keep generating new trial values if Ising values are the same
-    while((sys->ising_array[vertex_trial] == sys->ising_array[vertex_trial_2]) || (sys->ising_array[vertex_trial] == 2) || (sys->ising_array[vertex_trial_2] == 2)) {
-    	vertex_trial = local_generator.rand_select(sys->vertices-1);
-        vertex_trial_2 = local_generator.rand_select(sys->vertices-1);   		 
-    }    
-
-    // Set trial values
-    int sys->ising_array_trial_1 = sys->ising_array[vertex_trial_2];
-    int sys->ising_array_trial_2 = sys->ising_array[vertex_trial];
-
-    // Now actually swap. We'll evaluate the energy difference using the neighboring stencil for each. Note this double counts trial, trial_2 so we'll need to add that part back in twice
-    double phi_magnet = 0;
-    for(int j=0; j<sys->point_neighbor_list[vertex_trial].size(); j++) {
-        double Site_diff = sys->j_coupling[sys->ising_array[vertex_trial]][sys->ising_array[sys->point_neighbor_list[vertex_trial][j]]]*sys->ising_values[sys->ising_array[vertex_trial]];
-        double Site_diff_2 = sys->j_coupling[sys->ising_array_trial_1][sys->ising_array[sys->point_neighbor_list[vertex_trial][j]]]*sys->ising_values[sys->ising_array_trial_1];
-        phi_magnet -= (Site_diff_2-Site_diff)*sys->ising_values[sys->ising_array[sys->point_neighbor_list[vertex_trial][j]]];
-    }    
-    
-    // Evaluate energy difference due to types swapping from mean curvature, surface tension
-    double diff_curv_v = sys->mean_curvature_vertex[vertex_trial]-spon_curv[sys->ising_array_trial_1];
-    sys->phi_vertex[vertex_trial] = k_b[sys->ising_array_trial_1]*sys->sigma_vertex[vertex_trial]*diff_curv_v*diff_curv_v;
-
-    // Trial 2
-    for(int j=0; j<point_neighbor_max[vertex_trial_2]; j++) {
-        double Site_diff = sys->j_coupling[sys->ising_array[vertex_trial_2]][sys->ising_array[sys->point_neighbor_list[vertex_trial_2][j]]]*sys->ising_values[sys->ising_array[vertex_trial_2]];
-        double Site_diff_2 = sys->j_coupling[sys->ising_array_trial_2][sys->ising_array[sys->point_neighbor_list[vertex_trial_2][j]]]*sys->ising_values[sys->ising_array_trial_2];
-        phi_magnet -= (Site_diff_2-Site_diff)*sys->ising_values[sys->ising_array[sys->point_neighbor_list[vertex_trial_2][j]]];
-    }    
-    
-    // Evaluate energy difference due to types swapping from mean curvature, surface tension
-    double diff_curv_c = sys->mean_curvature_vertex[vertex_trial_2]-spon_curv[sys->ising_array_trial_2];
-    sys->phi_vertex[vertex_trial_2] = k_b[sys->ising_array_trial_2]*sys->sigma_vertex[vertex_trial_2]*diff_curv_c*diff_curv_c;
-
-    // Now check for self contribution
-    // First check to see if sites are neighboring
-    int check_double_count = link_triangle_test(vertex_trial, vertex_trial_2);
-    if(check_double_count == 1) {
-        phi_magnet += (sys->j_coupling[sys->ising_array_trial_1][sys->ising_array[vertex_trial_2]]*sys->ising_values[sys->ising_array_trial_1]-sys->j_coupling[sys->ising_array[vertex_trial]][sys->ising_array[vertex_trial_2]]*sys->ising_values[sys->ising_array[vertex_trial]])*sys->ising_values[sys->ising_array[vertex_trial_2]];
-        phi_magnet += (sys->j_coupling[sys->ising_array_trial_2][sys->ising_array[vertex_trial]]*sys->ising_values[sys->ising_array_trial_2]-sys->j_coupling[sys->ising_array[vertex_trial_2]][sys->ising_array[vertex_trial]]*sys->ising_values[sys->ising_array[vertex_trial_2]])*sys->ising_values[sys->ising_array[vertex_trial]];
-    }    
-
-    double phi_diff = phi_magnet + sys->phi_vertex[vertex_trial] - sys->phi_vertex_original[vertex_trial];
-    phi_diff += sys->phi_vertex[vertex_trial_2] - sys->phi_vertex_original[vertex_trial_2];
-    double chance = local_generator.d();
-    if(chance<exp(-phi_diff/T)){
-        phi += phi_diff;
-        sys->ising_array[vertex_trial] = sys->ising_array_trial_1;
-        sys->ising_array[vertex_trial_2] = sys->ising_array_trial_2;
-        sys->phi_vertex_original[vertex_trial] = sys->phi_vertex[vertex_trial];
-        sys->phi_vertex_original[vertex_trial_2] = sys->phi_vertex[vertex_trial_2];
-    }
-    
-    else {
-        steps_rejected_mass += 1;
-        sys->phi_vertex[vertex_trial] = sys->phi_vertex_original[vertex_trial];
-        sys->phi_vertex[vertex_trial_2] = sys->phi_vertex_original[vertex_trial_2];    
-    }
-    steps_tested_mass += 1;
-
-}
-
 void MCMoves::MoveProteinGen(int vertex_trial, int thread_id) {
     // Pick random protein and attempt to move it in the y-direction
     // As protein's not merging, don't let them
-    Saru& local_generator = generators[thread_id];
-    // cout << "Protein trial " << protein_trial << " ";
+    Saru& local_generator = sys->generators[thread_id];
     // Pick direction
     // Instead just go with one it's sys->nl->neighbors
     int direction_trial = local_generator.rand_select(sys->point_neighbor_list[vertex_trial].size()-1);
     int center_trial = sys->point_neighbor_list[vertex_trial][direction_trial]; 
     // Reject if about to swap with another protein of the same type
-    if((protein_node[vertex_trial] != -1) && (protein_node[vertex_trial] == protein_node[center_trial])) {
+    if((sys->protein_node[vertex_trial] != -1) && (sys->protein_node[vertex_trial] == sys->protein_node[center_trial])) {
         steps_tested_protein_thread[thread_id][0]++;
         steps_rejected_protein_thread[thread_id][0]++;
         return;
     }
     // Reject if not in the same checkerboard set
-    if(checkerboard_index[vertex_trial] != checkerboard_index[center_trial]) {
+    if(sys->nl->checkerboard_index[vertex_trial] != sys->nl->checkerboard_index[center_trial]) {
         steps_tested_protein_thread[thread_id][0]++;
         steps_rejected_protein_thread[thread_id][0]++;
         return;
     }
     // Have to break down into cases
-    int case_vertex = protein_node[vertex_trial];
-    int case_center = protein_node[center_trial];
+    int case_vertex = sys->protein_node[vertex_trial];
+    int case_center = sys->protein_node[center_trial];
 
     // Energetics of swapping those two
     // Set trial values
-    int sys->ising_array_trial_1 = sys->ising_array[center_trial];
-    int sys->ising_array_trial_2 = sys->ising_array[vertex_trial];
+    int ising_array_trial_1 = sys->ising_array[center_trial];
+    int ising_array_trial_2 = sys->ising_array[vertex_trial];
 
     // Now actually swap. We'll evaluate the energy difference using the neighboring stencil for each. Note this double counts trial, trial_2 so we'll need to add that part back in twice
     double phi_diff_phi = 0;
     for(int j=0; j<sys->point_neighbor_list[vertex_trial].size(); j++) {
         double Site_diff = sys->j_coupling[sys->ising_array[vertex_trial]][sys->ising_array[sys->point_neighbor_list[vertex_trial][j]]]*sys->ising_values[sys->ising_array[vertex_trial]];
-        double Site_diff_2 = sys->j_coupling[sys->ising_array_trial_1][sys->ising_array[sys->point_neighbor_list[vertex_trial][j]]]*sys->ising_values[sys->ising_array_trial_1];
+        double Site_diff_2 = sys->j_coupling[ising_array_trial_1][sys->ising_array[sys->point_neighbor_list[vertex_trial][j]]]*sys->ising_values[ising_array_trial_1];
         phi_diff_phi -= (Site_diff_2-Site_diff)*sys->ising_values[sys->ising_array[sys->point_neighbor_list[vertex_trial][j]]];
     }    
     
     // Evaluate energy difference due to types swapping from mean curvature, surface tension
-    double diff_curv_v = sys->mean_curvature_vertex[vertex_trial]-spon_curv[sys->ising_array_trial_1];
-    sys->phi_vertex[vertex_trial] = k_b[sys->ising_array_trial_1]*sys->sigma_vertex[vertex_trial]*diff_curv_v*diff_curv_v;
+    double diff_curv_v = sys->mean_curvature_vertex[vertex_trial]-sys->spon_curv[ising_array_trial_1];
+    sys->phi_vertex[vertex_trial] = sys->k_b[ising_array_trial_1]*sys->sigma_vertex[vertex_trial]*diff_curv_v*diff_curv_v;
 
     // Trial 2
     for(int j=0; j<point_neighbor_max[center_trial]; j++) {
         double Site_diff = sys->j_coupling[sys->ising_array[center_trial]][sys->ising_array[sys->point_neighbor_list[center_trial][j]]]*sys->ising_values[sys->ising_array[center_trial]];
-        double Site_diff_2 = sys->j_coupling[sys->ising_array_trial_2][sys->ising_array[sys->point_neighbor_list[center_trial][j]]]*sys->ising_values[sys->ising_array_trial_2];
+        double Site_diff_2 = sys->j_coupling[ising_array_trial_2][sys->ising_array[sys->point_neighbor_list[center_trial][j]]]*sys->ising_values[ising_array_trial_2];
         phi_diff_phi -= (Site_diff_2-Site_diff)*sys->ising_values[sys->ising_array[sys->point_neighbor_list[center_trial][j]]];
     }    
     
     // Evaluate energy difference due to types swapping from mean curvature, surface tension
-    double diff_curv_c = sys->mean_curvature_vertex[center_trial]-spon_curv[sys->ising_array_trial_2];
-    sys->phi_vertex[center_trial] = k_b[sys->ising_array_trial_2]*sys->sigma_vertex[center_trial]*diff_curv_c*diff_curv_c;
+    double diff_curv_c = sys->mean_curvature_vertex[center_trial]-sys->spon_curv[ising_array_trial_2];
+    sys->phi_vertex[center_trial] = sys->k_b[ising_array_trial_2]*sys->sigma_vertex[center_trial]*diff_curv_c*diff_curv_c;
 
     // Now add in self contribution to cancel that out 
-    phi_diff_phi += (sys->j_coupling[sys->ising_array_trial_1][sys->ising_array[center_trial]]*sys->ising_values[sys->ising_array_trial_1]-sys->j_coupling[sys->ising_array[vertex_trial]][sys->ising_array[center_trial]]*sys->ising_values[sys->ising_array[vertex_trial]])*sys->ising_values[sys->ising_array[center_trial]];
-    phi_diff_phi += (sys->j_coupling[sys->ising_array_trial_2][sys->ising_array[vertex_trial]]*sys->ising_values[sys->ising_array_trial_2]-sys->j_coupling[sys->ising_array[center_trial]][sys->ising_array[vertex_trial]]*sys->ising_values[sys->ising_array[center_trial]])*sys->ising_values[sys->ising_array[vertex_trial]];
+    phi_diff_phi += (sys->j_coupling[ising_array_trial_1][sys->ising_array[center_trial]]*sys->ising_values[ising_array_trial_1]-sys->j_coupling[sys->ising_array[vertex_trial]][sys->ising_array[center_trial]]*sys->ising_values[sys->ising_array[vertex_trial]])*sys->ising_values[sys->ising_array[center_trial]];
+    phi_diff_phi += (sys->j_coupling[ising_array_trial_2][sys->ising_array[vertex_trial]]*sys->ising_values[ising_array_trial_2]-sys->j_coupling[sys->ising_array[center_trial]][sys->ising_array[vertex_trial]]*sys->ising_values[sys->ising_array[center_trial]])*sys->ising_values[sys->ising_array[vertex_trial]];
     
     double phi_diff_bending = sys->phi_vertex[vertex_trial] - sys->phi_vertex_original[vertex_trial];
     phi_diff_bending += sys->phi_vertex[center_trial] - sys->phi_vertex_original[center_trial];
+    double phi_diff = phi_diff_phi+phi_diff_bending;
+    phi_diff += (sys->gamma_surf[ising_array_trial]-sys->gamma_surf[sys->ising_array[vertex_trial]])*sys->sigma_vertex[vertex_trial];
+    phi_diff += (sys->gamma_surf[ising_array_trial_2]-sys->gamma_surf[sys->ising_array[center_trial]])*sys->sigma_vertex[center_trial];
     double chance = local_generator.d();
     double db_factor = double(sys->point_neighbor_list[vertex_trial].size())/double(point_neighbor_max[center_trial]);
-    double chance_factor = -T*log(chance/db_factor);
-    double phi_diff = phi_diff_phi+phi_diff_bending;
+    double chance_factor = -sys->temp*log(chance/db_factor);
 
     // As switching curvatures, have to look at that closes
     bool accept = false;
@@ -872,18 +758,16 @@ void MCMoves::MoveProteinGen(int vertex_trial, int thread_id) {
         accept = true;
     }
 
-    // cout << phi_magnet << endl;
-    // cout << chance << " " << exp(-phi_magnet/T) << endl;
     if(accept == true) {
         sys->sim->phi_diff_thread[thread_id][0] += phi_diff;
         sys->sim->phi_bending_diff_thread[thread_id][0] += phi_diff_bending;
-        phi_sys->sim->phi_diff_thread[thread_id][0] += phi_diff_phi;
-        sys->ising_array[vertex_trial] = sys->ising_array_trial_1;
-        sys->ising_array[center_trial] = sys->ising_array_trial_2;
+        sys->sim->phi_phi_diff_thread[thread_id][0] += phi_diff_phi;
+        sys->ising_array[vertex_trial] = ising_array_trial_1;
+        sys->ising_array[center_trial] = ising_array_trial_2;
         sys->phi_vertex_original[vertex_trial] = sys->phi_vertex[vertex_trial];
         sys->phi_vertex_original[center_trial] = sys->phi_vertex[center_trial];
-        protein_node[vertex_trial] = case_center;
-        protein_node[center_trial] = case_vertex;
+        sys->protein_node[vertex_trial] = case_center;
+        sys->protein_node[center_trial] = case_vertex;
     }
     else {
         steps_rejected_protein_thread[thread_id][0] += 1;
@@ -894,52 +778,53 @@ void MCMoves::MoveProteinGen(int vertex_trial, int thread_id) {
 }
 
 void MCMoves::MoveProteinNL(int vertex_trial, int vertex_trial_2, int thread_id) {
-    // Pick two random nodes, see if one is a protein and attempt to swap if so
-    Saru& local_generator = generators[thread_id];
-    // cout << "Protein trial " << protein_trial << " ";
+    // Nonlocal movement of protein nodes using preselected vertex_trial and vertex_trial_2
+    Saru& local_generator = sys->generators[thread_id];
     // Reject if about to swap with another protein of the same type
-    if(((protein_node[vertex_trial] == -1) || (protein_node[vertex_trial_2] == -1)) && (protein_node[vertex_trial] == protein_node[vertex_trial_2])) {
+    if(((sys->protein_node[vertex_trial] == -1) || (sys->protein_node[vertex_trial_2] == -1)) && (sys->protein_node[vertex_trial] == sys->protein_node[vertex_trial_2])) {
         steps_tested_protein_thread[thread_id][0]++;
         steps_rejected_protein_thread[thread_id][0]++;
         return;
     }
     // Have to break down into cases
-    int case_vertex = protein_node[vertex_trial];
-    int case_center = protein_node[vertex_trial_2];
+    int case_vertex = sys->protein_node[vertex_trial];
+    int case_center = sys->protein_node[vertex_trial_2];
 
     // Energetics of swapping those two
     // Set trial values
-    int sys->ising_array_trial_1 = sys->ising_array[vertex_trial_2];
-    int sys->ising_array_trial_2 = sys->ising_array[vertex_trial];
+    int ising_array_trial_1 = sys->ising_array[vertex_trial_2];
+    int ising_array_trial_2 = sys->ising_array[vertex_trial];
 
     // Now actually swap. We'll evaluate the energy difference using the neighboring stencil for each. Note this double counts trial, trial_2 so we'll need to add that part back in twice
     double phi_diff_phi = 0;
     for(int j=0; j<sys->point_neighbor_list[vertex_trial].size(); j++) {
         double Site_diff = sys->j_coupling[sys->ising_array[vertex_trial]][sys->ising_array[sys->point_neighbor_list[vertex_trial][j]]]*sys->ising_values[sys->ising_array[vertex_trial]];
-        double Site_diff_2 = sys->j_coupling[sys->ising_array_trial_1][sys->ising_array[sys->point_neighbor_list[vertex_trial][j]]]*sys->ising_values[sys->ising_array_trial_1];
+        double Site_diff_2 = sys->j_coupling[ising_array_trial_1][sys->ising_array[sys->point_neighbor_list[vertex_trial][j]]]*sys->ising_values[ising_array_trial_1];
         phi_diff_phi -= (Site_diff_2-Site_diff)*sys->ising_values[sys->ising_array[sys->point_neighbor_list[vertex_trial][j]]];
     }    
     
     // Evaluate energy difference due to types swapping from mean curvature, surface tension
-    double diff_curv_v = sys->mean_curvature_vertex[vertex_trial]-spon_curv[sys->ising_array_trial_1];
-    sys->phi_vertex[vertex_trial] = k_b[sys->ising_array_trial_1]*sys->sigma_vertex[vertex_trial]*diff_curv_v*diff_curv_v;
+    double diff_curv_v = sys->mean_curvature_vertex[vertex_trial]-sys->spon_curv[ising_array_trial_1];
+    sys->phi_vertex[vertex_trial] = sys->k_b[ising_array_trial_1]*sys->sigma_vertex[vertex_trial]*diff_curv_v*diff_curv_v;
 
     // Trial 2
     for(int j=0; j<point_neighbor_max[vertex_trial_2]; j++) {
         double Site_diff = sys->j_coupling[sys->ising_array[vertex_trial_2]][sys->ising_array[sys->point_neighbor_list[vertex_trial_2][j]]]*sys->ising_values[sys->ising_array[vertex_trial_2]];
-        double Site_diff_2 = sys->j_coupling[sys->ising_array_trial_2][sys->ising_array[sys->point_neighbor_list[vertex_trial_2][j]]]*sys->ising_values[sys->ising_array_trial_2];
+        double Site_diff_2 = sys->j_coupling[ising_array_trial_2][sys->ising_array[sys->point_neighbor_list[vertex_trial_2][j]]]*sys->ising_values[ising_array_trial_2];
         phi_diff_phi -= (Site_diff_2-Site_diff)*sys->ising_values[sys->ising_array[sys->point_neighbor_list[vertex_trial_2][j]]];
     }    
     
     // Evaluate energy difference due to types swapping from mean curvature, surface tension
-    double diff_curv_c = sys->mean_curvature_vertex[vertex_trial_2]-spon_curv[sys->ising_array_trial_2];
-    sys->phi_vertex[vertex_trial_2] = k_b[sys->ising_array_trial_2]*sys->sigma_vertex[vertex_trial_2]*diff_curv_c*diff_curv_c;
+    double diff_curv_c = sys->mean_curvature_vertex[vertex_trial_2]-sys->spon_curv[ising_array_trial_2];
+    sys->phi_vertex[vertex_trial_2] = sys->k_b[ising_array_trial_2]*sys->sigma_vertex[vertex_trial_2]*diff_curv_c*diff_curv_c;
 
     double phi_diff_bending = sys->phi_vertex[vertex_trial] - sys->phi_vertex_original[vertex_trial];
     phi_diff_bending += sys->phi_vertex[vertex_trial_2] - sys->phi_vertex_original[vertex_trial_2];
-    double chance = local_generator.d();
-    double chance_factor = -T*log(chance);
     double phi_diff = phi_diff_phi+phi_diff_bending;
+    phi_diff += (sys->gamma_surf[ising_array_trial]-sys->gamma_surf[sys->ising_array[vertex_trial]])*sys->sigma_vertex[vertex_trial];
+    phi_diff += (sys->gamma_surf[ising_array_trial_2]-sys->gamma_surf[sys->ising_array[vertex_trial_2]])*sys->sigma_vertex[vertex_trial_2];
+    double chance = local_generator.d();
+    double chance_factor = -sys->temp*log(chance);
 
     // As switching curvatures, have to look at that closes
     bool accept = false;
@@ -952,13 +837,13 @@ void MCMoves::MoveProteinNL(int vertex_trial, int vertex_trial_2, int thread_id)
     if(accept == true) {
         sys->sim->phi_diff_thread[thread_id][0] += phi_diff;
         sys->sim->phi_bending_diff_thread[thread_id][0] += phi_diff_bending;
-        phi_sys->sim->phi_diff_thread[thread_id][0] += phi_diff_phi;
-        sys->ising_array[vertex_trial] = sys->ising_array_trial_1;
-        sys->ising_array[vertex_trial_2] = sys->ising_array_trial_2;
+        sys->sim->phi_phi_diff_thread[thread_id][0] += phi_diff_phi;
+        sys->ising_array[vertex_trial] = ising_array_trial_1;
+        sys->ising_array[vertex_trial_2] = ising_array_trial_2;
         sys->phi_vertex_original[vertex_trial] = sys->phi_vertex[vertex_trial];
         sys->phi_vertex_original[vertex_trial_2] = sys->phi_vertex[vertex_trial_2];
-        protein_node[vertex_trial] = case_center;
-        protein_node[vertex_trial_2] = case_vertex;
+        sys->protein_node[vertex_trial] = case_center;
+        sys->protein_node[vertex_trial_2] = case_vertex;
     }
     else {
         steps_rejected_protein_thread[thread_id][0] += 1;
@@ -969,54 +854,47 @@ void MCMoves::MoveProteinNL(int vertex_trial, int vertex_trial_2, int thread_id)
 }
 
 void MCMoves::ChangeArea() {
-// Attempt to change sys->lengths[0] and sys->lengths[1] uniformly
-// Going with logarthmic changes in area for now
-// Naw, let's try discrete steps
-// But discrete changes are also legitimate
-    // Select trial scale_xy factor
-    // double log_scale_xy_trial = log(scale_xy)+lambda_scale*randNeg1to1(generator);
-    // double scale_xy_trial = exp(log_scale_xy_trial);
+    // Attempt to modify the box size
     chrono::steady_clock::time_point t1_area;
     chrono::steady_clock::time_point t2_area;
     t1_area = chrono::steady_clock::now();
 
-    double scale_xy_trial = scale_xy+lambda_scale*generator.d(-1.0,1.0);
+    double scale_xy_trial = sys->scale_xy+lambda_scale*sys->generator.d(-1.0,1.0);
     if(scale_xy_trial <= 0.0) {
         steps_rejected_area++;
         steps_tested_area++;
         return;
     }
-    sys->lengths[0] = sys->lengths[0]_base*scale_xy_trial;
-    sys->lengths[1] = sys->lengths[1]_base*scale_xy_trial;
+    sys->lengths[0] = sys->lengths_base[0]*scale_xy_trial;
+    sys->lengths[1] = sys->lengths_base[1]*scale_xy_trial;
     t2_area = chrono::steady_clock::now();
     chrono::duration<double> time_span = t2_area-t1_area;
-    time_storage_area[0] += time_span.count();
+    sys->time_storage_area[0] += time_span.count();
     // Reform neighbor list
     t1_area = chrono::steady_clock::now();
-    generateNeighborList();
+    sys->nl->GenerateNeighborList();
     t2_area = chrono::steady_clock::now();
     time_span = t2_area-t1_area;
-    time_storage_area[1] += time_span.count();
+    sys->time_storage_area[1] += time_span.count();
     // Store original values
     t1_area = chrono::steady_clock::now();
-    double phi_ = phi;
-    double phi_bending_ = phi_bending;
-    double phi_phi_ = phi_phi;
-    double area_total_ = area_total;
+    double phi_ = sys->phi;
+    double phi_bending_ = sys->phi_bending;
+    double phi_phi_ = sys->phi_phi;
+    double area_total_ = sys->area_total;
     // Recompute energy
     // Note that this version doesn't override all variables
-    initializeEnergy_scale();
+    sys->util->InitializeEnergyScale();
     t2_area = chrono::steady_clock::now();
     time_span = t2_area-t1_area;
-    time_storage_area[2] += time_span.count();
+    sys->time_storage_area[2] += time_span.count();
     // Now accept/reject
     t1_area = chrono::steady_clock::now();
-    double chance = generator.d();
-    double phi_diff = phi-phi_-T*2*sys->vertices*log(scale_xy_trial/scale_xy);
-    if((chance<exp(-phi_diff/T)) && (phi_diff < pow(10,10))) {
-        scale_xy = scale_xy_trial;
-        sys->lengths[0]_old = sys->lengths[0];
-        sys->lengths[1]_old = sys->lengths[1];
+    double chance = sys->generator.d();
+    double phi_diff = (sys->phi-phi_)-sys->temp*2*sys->vertices*log(scale_xy_trial/sys->scale_xy);
+    if((chance<exp(-phi_diff/sys->temp)) && (phi_diff < pow(10,10))) {
+        sys->scale_xy = scale_xy_trial;
+        sys->lengths_old = sys->lengths;
         sys->nl->box_x = sys->lengths[0]/double(sys->nl->nl_x); 
         sys->nl->box_y = sys->lengths[1]/double(sys->nl->nl_y); 
         #pragma omp parallel for
@@ -1038,13 +916,12 @@ void MCMoves::ChangeArea() {
     }
     else {
         steps_rejected_area++;
-        phi = phi_;
-        phi_bending = phi_bending_;
-        phi_phi = phi_phi_;
-        area_total = area_total_;
-        sys->lengths[0] = sys->lengths[0]_old;
-        sys->lengths[1] = sys->lengths[1]_old;
-        generateNeighborList();
+        sys->phi = phi_;
+        sys->phi_bending = phi_bending_;
+        sys->phi_phi = phi_phi_;
+        sys->area_total = area_total_;
+        sys->lengths = sys->lengths_old;
+        sys->nl->GenerateNeighborList();
         sys->nl->box_x = sys->lengths[0]/double(sys->nl->nl_x); 
         sys->nl->box_y = sys->lengths[1]/double(sys->nl->nl_y); 
         #pragma omp parallel for
@@ -1067,5 +944,5 @@ void MCMoves::ChangeArea() {
     steps_tested_area++;
     t2_area = chrono::steady_clock::now();
     time_span = t2_area-t1_area;
-    time_storage_area[3] += time_span.count();
+    sys->time_storage_area[3] += time_span.count();
 }

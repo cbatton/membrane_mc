@@ -19,6 +19,8 @@ using namespace std;
 
 class NeighborList {
     public:
+        NeighborList(MembraneMC*);
+        ~NeighborList();
         void GenerateNeighborList();
         void GenerateCheckerboard();
 
@@ -40,13 +42,16 @@ class NeighborList {
         int checkerboard_x = 1;
         int checkerboard_y = 1;
         double checkerboard_set_size = 3.5;
-        double box_x = Length_x/double(nl_x); 
-        double box_y = Length_y/double(nl_y); 
-        double box_z = 2*Length_z/double(nl_z);
-        double box_x_checkerboard = Length_x/checkerboard_x;
-        double box_y_checkerboard = Length_y/checkerboard_y;
+        double box_x = 9000.0/double(nl_x); 
+        double box_y = 9000.0/double(nl_y); 
+        double box_z = 2*9000.0/double(nl_z);
+        double box_x_checkerboard = 9000.0/checkerboard_x;
+        double box_y_checkerboard = 9000.0/checkerboard_y;
         double cell_center_x = 0.0;
         double cell_center_y = 0.0;
+
+        // MembraneMC pointer
+        MembraneMC* sys;
 };
 
 #endif

@@ -37,8 +37,8 @@ class MembraneMC {
         // Class variables
         shared_ptr<Analyzers> analysis;
         shared_ptr<InitSystem> initializer(this);
-        shared_ptr<MCMoves> mc_mover;
-        shared_ptr<NeighborList> nl;
+        shared_ptr<MCMoves> mc_mover(this);
+        shared_ptr<NeighborList> nl(this);
         shared_ptr<OutputSystem> output;
         shared_ptr<Simulation> sim;
         shared_ptr<SimUtilities> sim_util;

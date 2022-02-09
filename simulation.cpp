@@ -61,7 +61,7 @@ void Simulation::CheckerboardMCSweep(bool nl_move) {
     // Have diff arrays to soter results to avoid atomic operations
     // Set to 0 here
     #pragma omp parallel for
-    for(int i=0; i<active_threads; i++) {
+    for(int i=0; i<sys->active_threads; i++) {
         phi_diff_thread[i][0] = 0;
         phi_bending_diff_thread[i][0] = 0;
         phi_phi_diff_thread[i][0] = 0;
@@ -172,7 +172,7 @@ void Simulation::CheckerboardMCSweep(bool nl_move) {
         }
     }
     #pragma omp parallel for reduction(+:sys->phi,sys->phi_bending,sys->phi_phi,area->area_total,sys->mass,sys->magnet,sys->mc_mover->steps_rejected_displace,sys->mc_mover->steps_tested_displace,sys->mc_mover->steps_rejected_tether,sys->mc_mover->steps_tested_tether,sys->mc_mover->steps_rejected_mass,sys->mc_mover->steps_tested_mass,sys->mc_mover->steps_rejected_protein,sys->mc_mover->steps_tested_protein)
-    for(int i=0; i<active_threads; i++) {
+    for(int i=0; i<sys->active_threads; i++) {
         sys->phi += phi_diff_thread[i][0];
         sys->phi_bending += phi_bending_diff_thread[i][0];
         sys->phi_phi += phi_phi_diff_thread[i][0];

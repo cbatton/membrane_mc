@@ -1,3 +1,6 @@
+#ifndef SIM_UTILITIES_
+#define SIM_UTILITIES_
+
 #include <iostream> 
 #include <fstream>
 #include <random>
@@ -13,9 +16,6 @@
 #include "membrane_mc.hpp"
 #include "saruprng.hpp"
 using namespace std;
-
-#ifndef SIM_UTILITIES_
-#define SIM_UTILITIES_
 
 class SimUtilities {
     public:

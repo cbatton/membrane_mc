@@ -1,3 +1,6 @@
+#ifndef MMC_H_
+#define MMC_H_
+
 #include <iostream> 
 #include <fstream>
 #include <random>
@@ -10,6 +13,7 @@
 #include <mpi.h>
 #include <iomanip>
 #include <chrono>
+#include <memory>
 #include "saruprng.hpp"
 #include "analyzers.hpp"
 #include "init_system.hpp"
@@ -21,13 +25,12 @@
 #include "utilities.hpp"
 using namespace std;
 
-#ifndef MMC_H_
-#define MMC_H_
-
 class MembraneMC {
     public:
         // This class contains all the major generic functions I am going to call
         // Functions
+        MembraneMC();
+        ~MembraneMC();
         void InputParam(int&, char**);
         void Equilibriate(int, chrono::steady_clock::time_point&);
         void Simulate(int, chrono::steady_clock::time_point&);
@@ -39,7 +42,7 @@ class MembraneMC {
         shared_ptr<InitSystem> initializer(this);
         shared_ptr<MCMoves> mc_mover(this);
         shared_ptr<NeighborList> nl(this);
-        shared_ptr<OutputSystem> output(this);
+        shared_ptr<OutputSystem> output_util(this);
         shared_ptr<Simulation> sim(this);
         shared_ptr<SimUtilities> sim_util(this);
         shared_ptr<Utilities> util(this);
@@ -98,9 +101,9 @@ class MembraneMC {
         double h_external = 0.0;
         // double area_original_total = 0;
         // double area_current_total = 0;
-        vector<double> lengths(3,90);
-        vector<double> lengths_old(3,90);
-        vector<double> lengths_base(3,90);
+        vector<double> lengths{0,0,0};
+        vector<double> lengths_old{0,0,0};
+        vector<double> lengths_base{0,0,0};
         double scale_xy = 1.0;
         double scale_xy_old = scale_xy;
         double num_frac = 0.5; // Number fraction of types
@@ -136,6 +139,8 @@ class MembraneMC {
         string output;
         string output_path;
         ofstream my_cout;
+        // OpenMP
+        int active_threads = 1;
 };
 
 #endif

@@ -1,3 +1,6 @@
+#ifndef ANALYZERS_
+#define ANALYZERS_
+
 #include <iostream> 
 #include <fstream>
 #include <random>
@@ -14,23 +17,23 @@
 #include "saruprng.hpp"
 using namespace std;
 
-#ifndef ANALYZERS_
-#define ANALYZERS_
+struct cluster {
+    vector<int> vertex_status;
+    vector<vector<int>> cluster_list;
+};
+
 
 class Analyzers {
     public:
         Analyzers();
-        Analyzers(MembraneMC*, int, int, int, int); // constructor to call after more info is there
+        Analyzers(MembraneMC *, int, int, int); // constructor to call after more info is there
         ~Analyzers();
         void EnergyAnalyzer();
         void AreaAnalyzer();
         void AreaProjAnalyzer();
         void MassAnalyzer();
-        void NumberNeighborsAnalyzer();
         void UmbAnalyzer();
         void UmbOutput(int, ofstream&);
-        void SampleNumberNeighbors(int);
-        void DumpNumberNeighbors(string, int);
         void ClusterAnalysis();
         void ClusterPostAnalysis();
         void ClusterDFS(int, int, cluster&);
@@ -43,7 +46,6 @@ class Analyzers {
 
         // Storage variables
         int storage_time = 10;
-        int storage_neighbor =  10;
         int storage_umb_time = 100;
         vector<double> energy_storage;
         vector<double> area_storage;
@@ -58,17 +60,12 @@ class Analyzers {
         int neighbor_counts = 0;
 
         // Mean density from protein center variables
+        double area_proj_average;
         int rdf_sample = 0;
         double mass_sample[3] = {0,0,0};
         int bins = 26;
         double bin_size = 10;
         vector<vector<double>> rho;
-
-        // Cluster data type
-        struct cluster {
-            vector<int> vertex_status;
-            vector<vector<int>> cluster_list;
-        };
 
         vector<double> mean_cluster_number;
         vector<double> mean_cluster_weight;

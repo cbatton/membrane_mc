@@ -1,3 +1,6 @@
+#ifndef NEIGHBORLIST_
+#define NEIGHBORLIST_
+
 #include <iostream> 
 #include <fstream>
 #include <random>
@@ -13,9 +16,6 @@
 #include "membrane_mc.hpp"
 #include "saruprng.hpp"
 using namespace std;
-
-#ifndef NEIGHBORLIST_
-#define NEIGHBORLIST_
 
 class NeighborList {
     public:

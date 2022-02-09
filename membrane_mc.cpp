@@ -10,6 +10,7 @@
 #include <mpi.h>
 #include <iomanip>
 #include <chrono>
+#include <memory>
 #include "membrane_mc.hpp"
 #include "saruprng.hpp"
 #include "analyzers.hpp"
@@ -58,7 +59,6 @@ void MembraneMC::InputParam(int& argc, char* argv[]) { // Takes parameters from 
     output_path = local_path+rank_paths[world_rank];
     my_cout.open(output, ios_base::app);
 
-    // Initialize OpenMP
     active_threads = omp_get_max_threads();
 
     ifstream input;
@@ -73,14 +73,13 @@ void MembraneMC::InputParam(int& argc, char* argv[]) { // Takes parameters from 
         // Temporary variables to pass to constructors
         int bins = 26;
         int storage_time = 10;
-        int storage_neighor = 10;
         int storage_umb_time = 100;
         // Read in everything
-        input >> line >> dim_x >> dim_y >> endl;
+        input >> line >> dim_x >> dim_y;
         getline(input,line);
         input >> line >> cycles_eq >> cycles_prod;
         getline(input, line);
-        input >> line >> storage_time >> storage_neighbor >> storage_umb_time;
+        input >> line >> storage_time >> storage_umb_time;
         getline(input, line);
         input >> line >> lengths[0] >> lengths[1] >> lengths[2];
         getline(input,line);
@@ -93,8 +92,6 @@ void MembraneMC::InputParam(int& argc, char* argv[]) { // Takes parameters from 
         input >> line >> tau_frame;
         getline(input, line);
         input >> line >> spon_curv[0] >> spon_curv[1] >> spon_curv[2]; 
-        getline(input, line);
-        input >> line >> Length_x >> Length_y >> Length_z;
         getline(input, line);
         input >> line >> mc_mover->lambda;
         getline(input, line);
@@ -137,7 +134,6 @@ void MembraneMC::InputParam(int& argc, char* argv[]) { // Takes parameters from 
             cout << "Lengths is now " << lengths[0] << " " << lengths[1] << " " << lengths[2] << endl;
             cout << "lambda is now " << mc_mover->lambda << endl;
             cout << "lambda_scale is now " << mc_mover->lambda_scale << endl;
-            cout << "scale is now " << scale << endl;
             cout << "ising_values is now " << ising_values[0] << " " << ising_values[1] << " " << ising_values[2] << endl;
             cout << "J is now " << j_coupling[0][0] << " " << j_coupling[0][1] << " " << j_coupling[0][2] << endl;
             cout << "\t" << j_coupling[1][0] << " " << j_coupling[1][1] << " " << j_coupling[1][2] << endl;
@@ -180,8 +176,8 @@ void MembraneMC::InputParam(int& argc, char* argv[]) { // Takes parameters from 
         phi_vertex_original.resize(vertices,0.0);
         mean_curvature_vertex.resize(vertices,0.0);
         mean_curvature_vertex_original.resize(vertices,0.0);
-        area_vertex.resize(vertices,0.0);
-        area_vertex_original.resize(vertices,0.0);
+        sigma_vertex.resize(vertices,0.0);
+        sigma_vertex_original.resize(vertices,0.0);
         area_faces.resize(faces,0.0);
         area_faces_original.resize(faces,0.0);
         // Triangle variables
@@ -253,7 +249,7 @@ void MembraneMC::Equilibriate(int cycles, chrono::steady_clock::time_point& begi
     while(time_span_m.count() < final_warning) {
         initializer->SaruSeed(count_step);
         count_step++;
-        if(nl_move_start == 0) {
+        if(mc_mover->nl_move_start == 0) {
             sim->NextStepParallel(false);
         }
         else {
@@ -289,24 +285,24 @@ void MembraneMC::Equilibriate(int cycles, chrono::steady_clock::time_point& begi
             time_storage_other[1] += time_span.count();
 
             t1_other = chrono::steady_clock::now();
-            my_cout << "displace " << steps_rejected_displace << "/" << steps_tested_displace << endl;
-            my_cout << "tether " << steps_rejected_tether << "/" << steps_tested_tether << endl;
-            my_cout << "mass " << steps_rejected_mass << "/" << steps_tested_mass << endl;
-            my_cout << "protein " << steps_rejected_protein << "/" << steps_tested_protein << endl;
-            my_cout << "area " << steps_rejected_area << "/" << steps_tested_area << endl;
+            my_cout << "displace " << mc_mover->steps_rejected_displace << "/" << mc_mover->steps_tested_displace << endl;
+            my_cout << "tether " << mc_mover->steps_rejected_tether << "/" << mc_mover->steps_tested_tether << endl;
+            my_cout << "mass " << mc_mover->steps_rejected_mass << "/" << mc_mover->steps_tested_mass << endl;
+            my_cout << "protein " << mc_mover->steps_rejected_protein << "/" << mc_mover->steps_tested_protein << endl;
+            my_cout << "area " << mc_mover->steps_rejected_area << "/" << mc_mover->steps_tested_area << endl;
             t2_other = chrono::steady_clock::now();
             time_span = t2_other-t1_other;
             time_storage_other[2] += time_span.count();
 		}
 		if(i%1000==0) {
             t1_other = chrono::steady_clock::now();
-			output->OutputTriangulation("int.off");	
+			output_util->OutputTriangulation("int.off");	
             if(i%40000==0) {
-                output->OutputTriangulation("int_2.off");	
+                output_util->OutputTriangulation("int_2.off");	
             }
             if(i%4000==0) {
-			    output->DumpXYZConfig("config_equil.xyz");
-			    output->OutputTriangulationAppend("equil.off");	
+			    output_util->DumpXYZConfig("config_equil.xyz");
+			    output_util->OutputTriangulationAppend("equil.off");	
             }
             t2_other = chrono::steady_clock::now();
             chrono::duration<double> time_span = t2_other-t1_other;
@@ -319,9 +315,9 @@ void MembraneMC::Equilibriate(int cycles, chrono::steady_clock::time_point& begi
             break;
         }
     }
-    output->OutputTriangulation("int.off");	
-    steps_tested_eq = steps_tested_displace + steps_tested_tether + steps_tested_mass + steps_tested_protein + steps_tested_area;
-    steps_rejected_eq = steps_rejected_displace + steps_tested_tether + steps_rejected_mass + steps_rejected_protein + steps_rejected_area;
+    output_util->OutputTriangulation("int.off");	
+    mc_mover->steps_tested_eq = mc_mover->steps_tested_displace + mc_mover->steps_tested_tether + mc_mover->steps_tested_mass + mc_mover->steps_tested_protein + mc_mover->steps_tested_area;
+    mc_mover->steps_rejected_eq = mc_mover->steps_rejected_displace + mc_mover->steps_tested_tether + mc_mover->steps_rejected_mass + mc_mover->steps_rejected_protein + mc_mover->steps_rejected_area;
 }
 
 void MembraneMC::Simulate(int cycles, chrono::steady_clock::time_point& begin) {
@@ -329,16 +325,16 @@ void MembraneMC::Simulate(int cycles, chrono::steady_clock::time_point& begin) {
     chrono::steady_clock::time_point t1_other;
     chrono::steady_clock::time_point t2_other;
     chrono::steady_clock::time_point middle;
-    steps_tested_displace = 0;
-    steps_rejected_displace = 0;
-    steps_tested_tether = 0;
-    steps_rejected_tether = 0;
-    steps_tested_mass = 0;
-    steps_rejected_mass = 0;
-    steps_tested_protein = 0;
-    steps_rejected_protein = 0;
-    steps_tested_area = 0;
-    steps_rejected_area = 0;
+    mc_mover->steps_tested_displace = 0;
+    mc_mover->steps_rejected_displace = 0;
+    mc_mover->steps_tested_tether = 0;
+    mc_mover->steps_rejected_tether = 0;
+    mc_mover->steps_tested_mass = 0;
+    mc_mover->steps_rejected_mass = 0;
+    mc_mover->steps_tested_protein = 0;
+    mc_mover->steps_rejected_protein = 0;
+    mc_mover->steps_tested_area = 0;
+    mc_mover->steps_rejected_area = 0;
     ofstream myfile_umb;
     myfile_umb.precision(17);
     myfile_umb.open(output_path+"/mbar_data.txt", std::ios_base::app);
@@ -359,8 +355,8 @@ void MembraneMC::Simulate(int cycles, chrono::steady_clock::time_point& begin) {
 			my_cout << "cycle " << i << endl;
 			my_cout << "energy " << std::scientific << phi << " " << std::scientific << phi-phi_ << endl;
             my_cout << "phi_bending " << std::scientific << phi_bending << " " << std::scientific << phi_bending-phi_bending_ << " phi_phi " << std::scientific << phi_phi << " " << std::scientific << phi_phi-phi_phi_ << endl;
-            my_cout << "mass " << Mass << endl;
-            my_cout << "area " << Area_total << " and " << Length_x*Length_y << endl;
+            my_cout << "mass " << mass << endl;
+            my_cout << "area " << area_total << " and " << lengths[0]*lengths[1] << endl;
             t2_other = chrono::steady_clock::now();
             chrono::duration<double> time_span = t2_other-t1_other;
             time_storage_other[0] += time_span.count();
@@ -372,24 +368,24 @@ void MembraneMC::Simulate(int cycles, chrono::steady_clock::time_point& begin) {
             time_storage_other[1] += time_span.count();
 
             t1_other = chrono::steady_clock::now();
-            my_cout << "displace " << steps_rejected_displace << "/" << steps_tested_displace << endl;
-            my_cout << "tether " << steps_rejected_tether << "/" << steps_tested_tether << endl;
-            my_cout << "mass " << steps_rejected_mass << "/" << steps_tested_mass << endl;
-            my_cout << "protein " << steps_rejected_protein << "/" << steps_tested_protein << endl;
-            my_cout << "area " << steps_rejected_area << "/" << steps_tested_area << endl;
+            my_cout << "displace " << mc_mover->steps_rejected_displace << "/" << mc_mover->steps_tested_displace << endl;
+            my_cout << "tether " << mc_mover->steps_rejected_tether << "/" << mc_mover->steps_tested_tether << endl;
+            my_cout << "mass " << mc_mover->steps_rejected_mass << "/" << mc_mover->steps_tested_mass << endl;
+            my_cout << "protein " << mc_mover->steps_rejected_protein << "/" << mc_mover->steps_tested_protein << endl;
+            my_cout << "area " << mc_mover->steps_rejected_area << "/" << mc_mover->steps_tested_area << endl;
             t2_other = chrono::steady_clock::now();
             time_span = t2_other-t1_other;
             time_storage_other[2] += time_span.count();
 		}
 		if(i%1000==0) {
             t1_other = chrono::steady_clock::now();
-			output->OutputTriangulation("int.off");	
+			output_util->OutputTriangulation("int.off");	
             if(count_step%20000==0) {
-                output->OutputTriangulation("int_2.off");	
+                output_util->OutputTriangulation("int_2.off");	
             }
             if(i%4000==0) {
-			    output->DumpXYZConfig("config.xyz");
-			    output->OutputTriangulationAppend("prod.off");	
+			    output_util->DumpXYZConfig("config.xyz");
+			    output_util->OutputTriangulationAppend("prod.off");	
             }
             t2_other = chrono::steady_clock::now();
             chrono::duration<double> time_span = t2_other-t1_other;
@@ -404,7 +400,7 @@ void MembraneMC::Simulate(int cycles, chrono::steady_clock::time_point& begin) {
 		    analysis->energy_storage[i/analysis->storage_time] = phi;
             analysis->area_storage[i/analysis->storage_time] = area_total;
             analysis->area_proj_storage[i/analysis->storage_time] = lengths[0]*lengths[1];
-            analysis->mass_storage[i/storage_time] = mass;
+            analysis->mass_storage[i/analysis->storage_time] = mass;
             analysis->storage_counts++;
         }
         middle = chrono::steady_clock::now();
@@ -414,9 +410,9 @@ void MembraneMC::Simulate(int cycles, chrono::steady_clock::time_point& begin) {
             break;
         }
     }
-    output->OutputTriangulation("int.off");	
-    steps_tested_prod = steps_tested_displace + steps_tested_tether + steps_tested_mass + steps_tested_protein + steps_tested_area;
-    steps_rejected_prod = steps_rejected_displace + steps_tested_tether + steps_rejected_mass + steps_rejected_protein + steps_rejected_area;
+    output_util->OutputTriangulation("int.off");	
+    mc_mover->steps_tested_prod = mc_mover->steps_tested_displace + mc_mover->steps_tested_tether + mc_mover->steps_tested_mass + mc_mover->steps_tested_protein + mc_mover->steps_tested_area;
+    mc_mover->steps_rejected_prod = mc_mover->steps_rejected_displace + mc_mover->steps_tested_tether + mc_mover->steps_rejected_mass + mc_mover->steps_rejected_protein + mc_mover->steps_rejected_area;
     myfile_umb.close();
 }
 

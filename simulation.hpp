@@ -1,3 +1,6 @@
+#ifndef SIMULATION_
+#define SIMULATION_
+
 #include <iostream> 
 #include <fstream>
 #include <random>
@@ -14,9 +17,6 @@
 #include "saruprng.hpp"
 using namespace std;
 
-#ifndef SIMULATION_
-#define SIMULATION_
-
 class Simulation {
     public:
         Simulation(MembraneMC*);
@@ -26,7 +26,7 @@ class Simulation {
         void NextStepParallel(bool);
 
         // openmp stuff
-        const int max_threads = omp_get_max_threads();
+        constexpr static int max_threads = 272;
         int active_threads = 0;
         double phi_diff_thread[max_threads][8];
         double phi_phi_diff_thread[max_threads][8];

@@ -1,3 +1,6 @@
+#ifndef OUTPUT_SYSTEM_
+#define OUTPUT_SYSTEM_
+
 #include <iostream> 
 #include <fstream>
 #include <random>
@@ -13,9 +16,6 @@
 #include "membrane_mc.hpp"
 #include "saruprng.hpp"
 using namespace std;
-
-#ifndef OUTPUT_SYSTEM_
-#define OUTPUT_SYSTEM_
 
 class OutputSystem {
     public:

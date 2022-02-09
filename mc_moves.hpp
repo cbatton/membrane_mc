@@ -1,3 +1,6 @@
+#ifndef MC_MOVES_
+#define MC_MOVES_
+
 #include <iostream> 
 #include <fstream>
 #include <random>
@@ -14,8 +17,6 @@
 #include "saruprng.hpp"
 using namespace std;
 
-#ifndef MC_MOVES_
-#define MC_MOVES_
 
 class MCMoves {
     public:
@@ -45,6 +46,7 @@ class MCMoves {
         long long int steps_rejected_eq = 0;
         long long int steps_tested_prod = 0;
         long long int steps_rejected_prod = 0;
+        constexpr static int max_threads = 272;
         int steps_tested_displace_thread[max_threads][8];
         int steps_rejected_displace_thread[max_threads][8];
         int steps_tested_tether_thread[max_threads][8];

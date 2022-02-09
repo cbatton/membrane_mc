@@ -1,3 +1,6 @@
+#ifndef INIT_SYSTEM_
+#define INIT_SYSTEM_
+
 #include <iostream> 
 #include <fstream>
 #include <random>
@@ -13,9 +16,6 @@
 #include "membrane_mc.hpp"
 #include "saruprng.hpp"
 using namespace std;
-
-#ifndef INIT_SYSTEM_
-#define INIT_SYSTEM_
 
 class InitSystem {
     public:

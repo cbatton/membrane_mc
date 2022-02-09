@@ -14,15 +14,14 @@
 #include <iomanip>
 #include <chrono>
 #include "membrane_mc.hpp"
-#include "saruprng.hpp"
 using namespace std;
 
 class NeighborList {
     public:
-        NeighborList(MembraneMC*);
+        NeighborList();
         ~NeighborList();
-        void GenerateNeighborList();
-        void GenerateCheckerboard();
+        void GenerateNeighborList(MembraneMC&);
+        void GenerateCheckerboard(MembraneMC&);
 
         // Neighborlist
         vector<vector<int>> neighbor_list; // Neighbor list
@@ -50,8 +49,6 @@ class NeighborList {
         double cell_center_x = 0.0;
         double cell_center_y = 0.0;
 
-        // MembraneMC pointer
-        MembraneMC* sys;
 };
 
 #endif

@@ -19,7 +19,6 @@
 #include "neighborlist.hpp"
 #include "output_system.hpp"
 #include "simulation.hpp"
-#include "sim_utilities.hpp"
 #include "utilities.hpp"
 using namespace std;
 

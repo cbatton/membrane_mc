@@ -15,13 +15,6 @@
 #include <chrono>
 #include <memory>
 #include "saruprng.hpp"
-#include "init_system.hpp"
-#include "mc_moves.hpp"
-#include "neighborlist.hpp"
-#include "output_system.hpp"
-#include "simulation.hpp"
-#include "sim_utilities.hpp"
-#include "utilities.hpp"
 using namespace std;
 
 class MembraneMC {
@@ -35,15 +28,6 @@ class MembraneMC {
         void Simulate(int, chrono::steady_clock::time_point&);
         void OutputTimes();
         void OutputAnalyzers();
-        // Variables
-        // Class variables
-        shared_ptr<InitSystem> initializer(this);
-        shared_ptr<MCMoves> mc_mover(this);
-        shared_ptr<NeighborList> nl(this);
-        shared_ptr<OutputSystem> output_util(this);
-        shared_ptr<Simulation> sim(this);
-        shared_ptr<SimUtilities> sim_util(this);
-        shared_ptr<Utilities> util(this);
         // Variables
         // Initial mesh is points distributed in rectangular grid
         int dim_x = 200; // Nodes in x direction

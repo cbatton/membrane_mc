@@ -39,7 +39,7 @@ class MembraneMC {
         shared_ptr<InitSystem> initializer(this);
         shared_ptr<MCMoves> mc_mover(this);
         shared_ptr<NeighborList> nl(this);
-        shared_ptr<OutputSystem> output;
+        shared_ptr<OutputSystem> output(this);
         shared_ptr<Simulation> sim;
         shared_ptr<SimUtilities> sim_util;
         shared_ptr<Utilities> util;
@@ -87,8 +87,6 @@ class MembraneMC {
         int mass = 0;
         double magnet = 0;
         double area_total;
-        double sigma_i_total = 0.0;
-        double area_proj_average;
 
         double k_b[3] = {20.0, 20.0, 20.0}; // k units
         double gamma_surf[3] = {0.0, 0.0, 0.0}; // k units

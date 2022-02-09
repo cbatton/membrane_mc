@@ -29,6 +29,7 @@ class SimUtilities {
         double CosineAngle(int, int, int); // Will use a different scheme here.....
         double CosineAngleNorm(int, int, int);
         double Cotangent(double);
+        double Cotangent(int, int, int);
         void AcosFastInitialize();
         inline double AcosFast(double);
         void CotangentFastInitialize();

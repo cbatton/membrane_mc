@@ -19,15 +19,15 @@ using namespace std;
 
 class OutputSystem {
     public:
+        OutputSystem(MembraneMC*);
+        ~OutputSystem();
         void OutputTriangulation(string);
         void OutputTriangulationAppend(string);
         void OutputTriangulationStorage();
         void DumpXYZConfig(string);
-        void DumpXYZConfigNormal(string);
-        void DumpXYZCheckerboard(string);
-        void DumpPhiNode(string);
-        void DumpAreaNode(string);
 
+        // MembraneMC pointer
+        MembraneMC* sys;
 };
 
 #endif

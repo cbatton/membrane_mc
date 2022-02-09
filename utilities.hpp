@@ -19,13 +19,15 @@ using namespace std;
 
 class Utilities {
     public:
+        Utilities(MembraneMC*);
+        ~Utilities();
         void LinkMaxMin();
         void EnergyNode(int);
         void InitializeEnergy();
         void InitializeEnergyScale();
-        void EnergyNode_i(int);
-        void InitializeEnergy_i();
 
+        // MembraneMC pointer
+        MembraneMC* sys;
 };
 
 #endif

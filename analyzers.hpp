@@ -14,7 +14,6 @@
 #include <iomanip>
 #include <chrono>
 #include "membrane_mc.hpp"
-#include "saruprng.hpp"
 using namespace std;
 
 struct cluster {
@@ -26,23 +25,19 @@ struct cluster {
 class Analyzers {
     public:
         Analyzers();
-        Analyzers(MembraneMC *, int, int, int); // constructor to call after more info is there
+        Analyzers(int, int, int, MembraneMC&); // constructor to call after more info is there
         ~Analyzers();
         void EnergyAnalyzer();
         void AreaAnalyzer();
         void AreaProjAnalyzer();
         void MassAnalyzer();
-        void UmbAnalyzer();
-        void UmbOutput(int, ofstream&);
-        void ClusterAnalysis();
+        void UmbOutput(double&, double&, double&, vector<double>&, double&, ofstream&);
+        void ClusterAnalysis(MembraneMC&);
         void ClusterPostAnalysis();
-        void ClusterDFS(int, int, cluster&);
-        void RDFRoutine(int, int, int, int, int);
-        void RhoSample();
-        void RhoAnalyzer();
-
-        // MembraneMC pointer
-        MembraneMC* sys;
+        void ClusterDFS(MembraneMC&, int, int, cluster&);
+        void RDFRoutine(MembraneMC&, int, int, int, int, int);
+        void RhoSample(MembraneMC&);
+        void RhoAnalyzer(MembraneMC&);
 
         // Storage variables
         int storage_time = 10;
@@ -52,12 +47,12 @@ class Analyzers {
         vector<double> area_proj_storage;
         vector<double> mass_storage;
         vector<vector<long long int>> numbers_neighbor;
-        vector<double> energy_storage_umb;
-        vector<double> energy_harmonic_umb;
         // Analyzer counts
         int storage_counts = 0;
         int umb_counts = 0;
         int neighbor_counts = 0;
+        // Output string
+        string output_path;
 
         // Mean density from protein center variables
         double area_proj_average;

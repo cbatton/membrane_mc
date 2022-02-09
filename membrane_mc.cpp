@@ -213,7 +213,7 @@ void MembraneMC::InputParam(int& argc, char* argv[]) { // Takes parameters from 
         initializer->GenerateTriangulationEquil();
         initializer->UseTriangulation("out.off");
         // Now Initialize utility classes
-        analysis = make_shared<Analyzers>(this, bins, storage_time, storage_neighor, storage_umb_time);
+        analysis = make_shared<Analyzers>(this, bins, storage_time, storage_umb_time);
         // Generate neighbor lists
         nl->GenerateNeighborList();
         nl->GenerateCheckerboard();

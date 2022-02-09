@@ -20,25 +20,23 @@ Analyzers::Analyzers() {
     // Should need to do nothing here
 }
 
-Analyzers::Analyzers(MembraneMC *sys_, int bins_, int storage_time_, int storage_umb_time_) {
+Analyzers::Analyzers(int bins_, int storage_time_, int storage_umb_time_, MembraneMC& sys) {
     // Constructor
-    sys = sys_;
     bins = bins_;
     storage_time = storage_time_;
     storage_umb_time = storage_umb_time_;
     // Adjust size of storage variables
-    int storage = sys->cycles_prod/storage_time;
-    int storage_umb = sys->cycles_prod/storage_umb_time;
+    int storage = sys.cycles_prod/storage_time;
     energy_storage.resize(storage,0.0);
     area_storage.resize(storage,0.0);
     area_proj_storage.resize(storage,0.0);
     mass_storage.resize(storage,0.0);
-    energy_storage_umb.resize(storage_umb,0.0);
-    energy_harmonic_umb.resize(storage_umb,0.0);
     // Adjust rho variables
     vector<double> list(bins,0.0);
     rho.resize(6,list);
-    bin_size = sys->lengths[0]/bins;
+    bin_size = sys.lengths[0]/bins;
+    // Adjust output_path
+    output_path = sys.output_path;
     
 }
 
@@ -63,12 +61,12 @@ void Analyzers::EnergyAnalyzer() {
     energy_std = sqrt(energy_std/(storage_counts-1));
 
     ofstream myfile;
-    myfile.open(sys->output_path+"/energy.txt", std::ios_base::app);
+    myfile.open(output_path+"/energy.txt", std::ios_base::app);
     myfile << "Energy from simulation run" << endl;
     myfile << "Average " << std::scientific << energy_ave << " Standard deviation " << std::scientific << energy_std << endl;
     myfile.close();
 
-    myfile.open(sys->output_path+"/energy_storage.txt", std::ios_base::app);
+    myfile.open(output_path+"/energy_storage.txt", std::ios_base::app);
     myfile << "Energy from run" << endl;
     myfile.precision(8);
     for(int i=0; i<storage_counts; i+=10) {
@@ -93,13 +91,13 @@ void Analyzers::AreaAnalyzer() {
     area_std = sqrt(area_std/(storage_counts-1));
 
     ofstream myfile;
-    myfile.open(sys->output_path+"/area.txt", std::ios_base::app);
+    myfile.open(output_path+"/area.txt", std::ios_base::app);
     myfile.precision(17);
     myfile << "Area from simulation run" << endl;
     myfile << "Average " << std::scientific << area_ave << " Standard deviation " << std::scientific << area_std << endl;
     myfile.close();
 
-    myfile.open(sys->output_path+"/area_storage.txt", std::ios_base::app);
+    myfile.open(output_path+"/area_storage.txt", std::ios_base::app);
     myfile.precision(8);
     myfile << "Area from run" << endl;
     for(int i=0; i<storage_counts; i+=10) {
@@ -124,13 +122,13 @@ void Analyzers::AreaProjAnalyzer() {
     area_std = sqrt(area_std/(storage_counts-1));
 
     ofstream myfile;
-    myfile.open(sys->output_path+"/area_proj.txt", std::ios_base::app);
+    myfile.open(output_path+"/area_proj.txt", std::ios_base::app);
     myfile.precision(17);
     myfile << "Area from simulation run" << endl;
     myfile << "Average " << std::scientific << area_ave << " Standard deviation " << std::scientific << area_std << endl;
     myfile.close();
 
-    myfile.open(sys->output_path+"/area_proj_storage.txt", std::ios_base::app);
+    myfile.open(output_path+"/area_proj_storage.txt", std::ios_base::app);
     myfile.precision(8);
     myfile << "Area from run" << endl;
     for(int i=0; i<storage_counts; i+=10) {
@@ -155,13 +153,13 @@ void Analyzers::MassAnalyzer() {
     mass_std = sqrt(mass_std/(storage_counts-1));
 
     ofstream myfile;
-    myfile.open(sys->output_path+"/mass.txt", std::ios_base::app);
+    myfile.open(output_path+"/mass.txt", std::ios_base::app);
     myfile.precision(17);
     myfile << "Mass from simulation run" << endl;
     myfile << "Average " << std::scientific << mass_ave << " Standard deviation " << std::scientific << mass_std << endl;
     myfile.close();
 
-    myfile.open(sys->output_path+"/mass_storage.txt", std::ios_base::app);
+    myfile.open(output_path+"/mass_storage.txt", std::ios_base::app);
     myfile.precision(8);
     myfile << "Mass from run" << endl;
     for(int i=0; i<storage_counts; i+=10) {
@@ -170,24 +168,7 @@ void Analyzers::MassAnalyzer() {
     myfile.close();
 }
 
-void Analyzers::UmbAnalyzer() {
-    // Dump umbrella sampling files
-    // Evaluate average of energy to scale results
-    double energy_ave_umb = 0;
-    for(int i=0; i<umb_counts; i++) {
-        energy_ave_umb += energy_storage_umb[i];
-    }
-    energy_ave_umb = energy_ave_umb/umb_counts;
-    ofstream myfile;
-    myfile.precision(17);
-    myfile.open(sys->output_path+"/mbar_data.txt", std::ios_base::app);
-    for(int i=0; i<umb_counts; i++) {
-        myfile << std::scientific << energy_harmonic_umb[i] << " " << std::scientific << energy_storage_umb[i] << endl;
-    }
-    myfile.close();
-}
-
-void Analyzers::UmbOutput(int i, ofstream& myfile) {
+void Analyzers::UmbOutput(double& phi, double& phi_bending, double& phi_phi, vector<double>& lengths, double& area_total, ofstream& myfile) {
     // Output current umbrella variables
     // Evaluate average of energy to scale results
     // Commands to speed things up
@@ -195,10 +176,10 @@ void Analyzers::UmbOutput(int i, ofstream& myfile) {
     ios_base::sync_with_stdio(false);
     // Turns off flushing of out before in
     cin.tie(NULL);
-    myfile << std::scientific << energy_harmonic_umb[i] << " " << std::scientific << energy_storage_umb[i] << " " << std::scientific << sys->phi_bending << " " << std::scientific << sys->phi_phi << " " << std::scientific << sys->lengths[0]*sys->lengths[1] << " " << std::scientific << sys->area_total << "\n";
+    myfile << std::scientific << " " << std::scientific << phi << " " << std::scientific << phi_bending << " " << std::scientific << phi_phi << " " << std::scientific << lengths[0]*lengths[1] << " " << std::scientific << area_total << "\n";
 }
 
-void Analyzers::ClusterAnalysis() {
+void Analyzers::ClusterAnalysis(MembraneMC& sys) {
     // Do cluster analysis on current lattice configuration
     // Will find all clusters that have proteins/species associated with protein
     // Iterate over all the proteins as a start, find clusters from there
@@ -206,15 +187,15 @@ void Analyzers::ClusterAnalysis() {
     //
     // Initialize cluster list
     cluster cluster_cur;
-    cluster_cur.vertex_status.resize(sys->vertices, -1);
+    cluster_cur.vertex_status.resize(sys.vertices, -1);
     cluster_cur.cluster_list.clear();
     // Begin iteration    
     vector<int> list;
-    for(int i=0; i<sys->vertices; i++) {
-        if(sys->protein_node[i] == 0) {
+    for(int i=0; i<sys.vertices; i++) {
+        if(sys.protein_node[i] == 0) {
             if(cluster_cur.vertex_status[i] == -1) {
                 cluster_cur.cluster_list.push_back(list);
-                ClusterDFS(i, cluster_cur.cluster_list.size()-1, cluster_cur);
+                ClusterDFS(sys, i, cluster_cur.cluster_list.size()-1, cluster_cur);
             }
         }
     }
@@ -226,12 +207,12 @@ void Analyzers::ClusterAnalysis() {
     // Turns off flushing of out before in
     cin.tie(NULL);
     ofstream myfile;
-    myfile.open(sys->output_path+"/cluster.txt", std::ios_base::app);
-    myfile << "# " << sys->count_step << endl;
+    myfile.open(output_path+"/cluster.txt", std::ios_base::app);
+    myfile << "# " << sys.count_step << endl;
     for(int i=0; i<cluster_cur.cluster_list.size(); i++) {
         int protein_in_cluster = 0;
         for(int j=0; j<cluster_cur.cluster_list[i].size(); j++) {
-            if(sys->ising_array[cluster_cur.cluster_list[i][j]] == 2) {
+            if(sys.ising_array[cluster_cur.cluster_list[i][j]] == 2) {
                 protein_in_cluster++;
             }
         }
@@ -247,7 +228,7 @@ void Analyzers::ClusterAnalysis() {
         int cluster_size_ = cluster_cur.cluster_list[i].size();
         int cluster_size_protein_ = 0;
         for(int j=0; j<cluster_cur.cluster_list[i].size(); j++) {
-            if(sys->ising_array[cluster_cur.cluster_list[i][j]] == 2) {
+            if(sys.ising_array[cluster_cur.cluster_list[i][j]] == 2) {
                 cluster_size_protein_++;
             }
         }
@@ -268,15 +249,15 @@ void Analyzers::ClusterAnalysis() {
     mean_cluster_weight_protein.push_back(mean_cluster_weight_protein_);
 }
 
-void Analyzers::ClusterDFS(int vertex_ind, int cluster_ind, cluster& cluster_cur) {
+void Analyzers::ClusterDFS(MembraneMC& sys, int vertex_ind, int cluster_ind, cluster& cluster_cur) {
     // do recursive depth-first search
     cluster_cur.vertex_status[vertex_ind] = 0;
     cluster_cur.cluster_list[cluster_ind].push_back(vertex_ind);
-    for(int i=0; i<sys->point_neighbor_list[vertex_ind].size(); i++) {
-        int neighbor = sys->point_neighbor_list[vertex_ind][i];
+    for(int i=0; i<sys.point_neighbor_list[vertex_ind].size(); i++) {
+        int neighbor = sys.point_neighbor_list[vertex_ind][i];
         if(cluster_cur.vertex_status[neighbor] == -1) {
             if(sys->ising_array[neighbor] != 0) {
-                ClusterDFS(neighbor, cluster_ind, cluster_cur);
+                ClusterDFS(sys, neighbor, cluster_ind, cluster_cur);
             }
         }
     }
@@ -325,7 +306,7 @@ void Analyzers::ClusterPostAnalysis() {
 
     ofstream myfile;
     myfile.precision(10);
-    myfile.open(sys->output_path+"/cluster_analysis.txt", std::ios_base::app);
+    myfile.open(output_path+"/cluster_analysis.txt", std::ios_base::app);
     myfile << "# Cluster analysis from simulation run" << endl;
     myfile << "MCN " << std::scientific << mean_cluster_number_ave << " " << std::scientific << mean_cluster_number_std << endl;
     myfile << "MCW " << std::scientific << mean_cluster_weight_ave << " " << std::scientific << mean_cluster_weight_std << endl;
@@ -334,7 +315,7 @@ void Analyzers::ClusterPostAnalysis() {
     myfile << "NC " << std::scientific << number_clusters_ave << " " << std::scientific << number_clusters_std << endl;
     myfile.close();
 
-    myfile.open(sys->output_path+"/cluster_analysis_storage.txt", std::ios_base::app);
+    myfile.open(output_path+"/cluster_analysis_storage.txt", std::ios_base::app);
     myfile << "# Cluster analysis from run" << endl;
     for(int i=0; i<storage_counts; i+=10) {
         myfile << std::scientific << mean_cluster_number[i] << " " << std::scientific << mean_cluster_weight[i] << " " << std::scientific << mean_cluster_number_protein[i] << " " << std::scientific << mean_cluster_weight_protein[i] << " " << number_clusters[i] << endl;
@@ -342,17 +323,17 @@ void Analyzers::ClusterPostAnalysis() {
     myfile.close();
 }
 
-void Analyzers::RDFRoutine(int ind, int spec_0, int spec_1, int spec_2, int spec_3) {
+void Analyzers::RDFRoutine(MembraneMC& sys, int ind, int spec_0, int spec_1, int spec_2, int spec_3) {
     // routine to sample rho
     #pragma omp parallel for schedule(dynamic,32)
-    for(int i=0; i<sys->vertices; i++) {
-        if((sys->ising_array[i] == spec_0) || (sys->ising_array[i] == spec_1)) {
-            for(int j=0; j<sys->vertices; j++) {
+    for(int i=0; i<sys.vertices; i++) {
+        if((sys.ising_array[i] == spec_0) || (sys.ising_array[i] == spec_1)) {
+            for(int j=0; j<sys.vertices; j++) {
                 if(i != j) {
-                    if((sys->ising_array[j] == spec_2) || (sys->ising_array[j] == spec_3)) {
-                        double distance = sys->sim_util->LengthLink(i,j);
+                    if((sys.ising_array[j] == spec_2) || (sys.ising_array[j] == spec_3)) {
+                        double distance = sys.sim_util->LengthLink(i,j);
                         int bin_loc = int(distance/bin_size);
-                        if((distance<sys->lengths[0]*0.5) && (bin_loc < bins)) {
+                        if((distance<sys.lengths[0]*0.5) && (bin_loc < bins)) {
                             #pragma omp atomic
                             rho[ind][bin_loc] += 1;
                         }
@@ -363,7 +344,7 @@ void Analyzers::RDFRoutine(int ind, int spec_0, int spec_1, int spec_2, int spec
     }
 }
 
-void Analyzers::RhoSample() {
+void Analyzers::RhoSample(MembraneMC& sys) {
     // Sample radial distribution function
     // Will be measuring a bunch of these...
     int pairs[6][4];
@@ -398,16 +379,16 @@ void Analyzers::RhoSample() {
     pairs[5][2] = 0;
     pairs[5][3] = 0;
     for(int i=0; i<6; i++) {
-        RDFRoutine(i, pairs[i][0], pairs[i][1], pairs[i][2], pairs[i][3]);
+        RDFRoutine(sys, i, pairs[i][0], pairs[i][1], pairs[i][2], pairs[i][3]);
     }
     rdf_sample++;
-    mass_sample[0] += sys->vertices-sys->num_proteins-sys->mass;
-    mass_sample[1] += sys->mass;
-    mass_sample[2] += sys->num_proteins;
+    mass_sample[0] += sys.vertices-sys.num_proteins-sys.mass;
+    mass_sample[1] += sys.mass;
+    mass_sample[2] += sys.num_proteins;
 
 }
 
-void Analyzers::RhoAnalyzer() {
+void Analyzers::RhoAnalyzer(MembraneMC& sys) {
     // Analyze the mean density with respect to the protein center
     mass_sample[0] /= rdf_sample;
     mass_sample[1] /= rdf_sample;
@@ -422,7 +403,7 @@ void Analyzers::RhoAnalyzer() {
     area_ave = area_ave/storage_counts;
     area_proj_average = area_ave;
     cout << "area_proj_average " << area_proj_average << endl;
-    cout << "Length_x*Length_y " << sys->lengths[0]*sys->lengths[1] << endl;
+    cout << "Length_x*Length_y " << sys.lengths[0]*sys.lengths[1] << endl;
     double rho_ideal[6];
     rho_ideal[0] = mass_sample[2]/(area_proj_average);
     rho_ideal[1] = mass_sample[2]/(area_proj_average);
@@ -449,7 +430,7 @@ void Analyzers::RhoAnalyzer() {
     for(int k=0; k<6; k++) {
         ofstream myfile;
         myfile.precision(10);
-        myfile.open(sys->output_path+"/rho_protein_"+to_string(k)+".txt", std::ios_base::app);
+        myfile.open(output_path+"/rho_protein_"+to_string(k)+".txt", std::ios_base::app);
         cout << "Bin size " << bin_size << endl;
         for(int i=0; i<bins; i++) {
             myfile << bin_size*(i+0.5) << " " << std::scientific << rho[k][i] << endl;
@@ -459,6 +440,6 @@ void Analyzers::RhoAnalyzer() {
     // Output masses for post-processing
     ofstream myfile;
     myfile.precision(10);
-    myfile.open(sys->output_path+"/rho_protein_mass.txt", std::ios_base::app);
+    myfile.open(output_path+"/rho_protein_mass.txt", std::ios_base::app);
     myfile << std::scientific << mass_sample[0] << " " << std::scientific << mass_sample[1] << " " << std::scientific << mass_sample[2] << endl;
 }

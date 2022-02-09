@@ -15,7 +15,6 @@
 #include <chrono>
 #include <memory>
 #include "saruprng.hpp"
-#include "analyzers.hpp"
 #include "init_system.hpp"
 #include "mc_moves.hpp"
 #include "neighborlist.hpp"
@@ -38,7 +37,6 @@ class MembraneMC {
         void OutputAnalyzers();
         // Variables
         // Class variables
-        shared_ptr<Analyzers> analysis;
         shared_ptr<InitSystem> initializer(this);
         shared_ptr<MCMoves> mc_mover(this);
         shared_ptr<NeighborList> nl(this);
@@ -58,8 +56,8 @@ class MembraneMC {
         int faces = 2*dim_x*dim_y;
 
         // Triangulation radius values
-        vector<vector<double> radii_tri;
-        vector<vector<double> radii_tri_original;
+        vector<vector<double>> radii_tri;
+        vector<vector<double>> radii_tri_original;
         vector<int> ising_array;
         // Triangles
         const int neighbor_min = 2;

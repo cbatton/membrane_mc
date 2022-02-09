@@ -307,7 +307,7 @@ void Utilities::AreaNode(MembraneMC& sys, int i) {
     area_faces[i] = 0.5*pow(pow(ac_2*bd_3-ac_3*bd_2,2.0)+pow(-ac_1*bd_3+ac_3*bd_1,2.0)+pow(ac_1*bd_2-ac_2*bd_1,2.0) , 0.5);
 }
 
-void Utilities::NormalTriangle(int i, double normal[3]) {
+void Utilities::NormalTriangle(MembraneMC& sys, int i, double normal[3]) {
     // compute normal of a face
     int dummy_1 = sys.triangle_list[i][0];
     int dummy_2 = sys.triangle_list[i][1];
@@ -332,7 +332,7 @@ void Utilities::ShuffleSaru(Saru& saru, vector<int> &vector_int) {
     }
 }
 
-double Utilities::Cotangent(int i, int j, int k) {
+double Utilities::Cotangent(MembraneMC& sys, int i, int j, int k) {
     // Compute angle given by ij, ik
     double ac_1 = sys.lengths[0]*WrapDistance(sys.radii_tri[j][0], sys.radii_tri[i][0]);
     double ac_2 = sys.lengths[1]*WrapDistance(sys.radii_tri[j][1], sys.radii_tri[i][1]);
@@ -344,3 +344,13 @@ double Utilities::Cotangent(int i, int j, int k) {
     double cross = sqrt(pow(ac_2*bd_3-ac_3*bd_2,2)+pow(-ac_1*bd_3+ac_3*bd_1,2)+pow(ac_1*bd_2-ac_2*bd_1,2));
     return dot/cross;
 }
+
+void Utilities::SaruSeed(MembraneMC& sys, unsigned int value) {
+    // Prime Saru with input seeds of seed_base, value, and OpenMP threads
+    sys.generator = Saru(sys.seed_base, value);
+    #pragma omp parallel for
+    for(int i=0; i<omp_get_max_threads(); i++) {
+        sys.generators[i] = Saru(sys.seed_base, value, i);
+    }
+}
+

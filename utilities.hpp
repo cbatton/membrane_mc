@@ -15,7 +15,6 @@
 #include <chrono>
 #include "membrane_mc.hpp"
 #include "neighborlist.hpp"
-#include "saruprng.hpp"
 using namespace std;
 
 class Utilities {
@@ -32,6 +31,7 @@ class Utilities {
         void NormalTriangle(MembraneMC&, int i, double normal[3]);
         void ShuffleSaru(Saru&, vector<int>&);
         double Cotangent(MembraneMC&, int, int, int);
+        void SaruSeed(MembraneMC&, unsigned int);
 };
 
 #endif

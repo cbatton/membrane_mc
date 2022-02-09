@@ -12,13 +12,13 @@
 #include <chrono>
 #include "membrane_mc.hpp"
 #include "init_system.hpp"
+#include "utilities.hpp"
 #include "saruprng.hpp"
 using namespace std;
 
-InitSystem::InitSystem(MembraneMC* sys_) {
+InitSystem::InitSystem() {
     // Constructor
-    // Assign system to current system
-    sys = sys_;
+    // Does nothing
 }
 
 InitSystem::~InitSystem() {
@@ -26,98 +26,89 @@ InitSystem::~InitSystem() {
     // Does nothing
 }
 
-void InitSystem::InitializeEquilState() {
+void InitSystem::InitializeEquilState(MembraneMC& sys) {
     // Create two layers of points that will triangulate to form a mesh of equilateral triangle
     // Layer one
-    for(int i=0; i<sys->dim_x; i += 2){
-        for(int j=0; j<sys->dim_y; j++) {
-            sys->radii_tri[j+i*dim_y][0] = double(sys->lengths[0]*(i+0.5)/sys->dim_x)/sys->lengths[0]-0.5;
-            sys->radii_tri[j+i*dim_y][1] = double(sys->lengths[1]*(j+0.25)/sys->dim_y)/sys->lengths[1]-0.5;
-            sys->radii_tri[j+i*dim_y][2] = 0.0;
-            sys->radii_tri_original[j+i*dim_y] = radii_tri[j+i*dim_y]
+    for(int i=0; i<sys.dim_x; i += 2){
+        for(int j=0; j<sys.dim_y; j++) {
+            sys.radii_tri[j+i*sys.dim_y][0] = double(sys.lengths[0]*(i+0.5)/sys.dim_x)/sys.lengths[0]-0.5;
+            sys.radii_tri[j+i*sys.dim_y][1] = double(sys.lengths[1]*(j+0.25)/sys.dim_y)/sys.lengths[1]-0.5;
+            sys.radii_tri[j+i*sys.dim_y][2] = 0.0;
+            sys.radii_tri_original[j+i*sys.dim_y] = sys.radii_tri[j+i*sys.dim_y];
         }
     }
-    for(int i=1; i<sys->dim_x; i += 2){
-        for(int j=0; j<sys->dim_y; j++) {
-            sys->radii_tri[j+i*dim_y][0] = double(sys->lengths[0]*(i+0.5)/sys->dim_x)/sys->lengths[0]-0.5;
-            sys->radii_tri[j+i*dim_y][1] = double(sys->lengths[1]*(j+0.75)/sys->dim_y)/sys->lengths[1]-0.5;
-            sys->radii_tri[j+i*dim_y][2] = 0.0;
-            sys->radii_tri_original[j+i*dim_y] = radii_tri[j+i*dim_y]
+    for(int i=1; i<sys.dim_x; i += 2){
+        for(int j=0; j<sys.dim_y; j++) {
+            sys.radii_tri[j+i*sys.dim_y][0] = double(sys.lengths[0]*(i+0.5)/sys.dim_x)/sys.lengths[0]-0.5;
+            sys.radii_tri[j+i*sys.dim_y][1] = double(sys.lengths[1]*(j+0.75)/sys.dim_y)/sys.lengths[1]-0.5;
+            sys.radii_tri[j+i*sys.dim_y][2] = 0.0;
+            sys.radii_tri_original[j+i*sys.dim_y] = sys.radii_tri[j+i*sys.dim_y];
         }
     }
     
-    for(int i=0; i<(sys->vertices*sys->num_frac); i++) {
-		int j = sys->generator.rand_select(sys->vertices-1);
-		while (sys->ising_array[j] == 1) {
-			j = sys->generator.rand_select(sys->vertices-1);
+    for(int i=0; i<(sys.vertices*sys.num_frac); i++) {
+		int j = sys.generator.rand_select(sys.vertices-1);
+		while (sys.ising_array[j] == 1) {
+			j = sys.generator.rand_select(sys.vertices-1);
         }
-        sys->ising_array[j] = 1;
+        sys.ising_array[j] = 1;
     }    
 }
 
-void InitSystem::SaruSeed(unsigned int value) {
-    // Prime Saru with input seeds of seed_base, value, and OpenMP threads
-    sys->generator = Saru(sys->seed_base, value);
-    #pragma omp parallel for
-    for(int i=0; i<omp_get_max_threads(); i++) {
-        sys->generators[i] = Saru(sys->seed_base, value, i);
-    }
-}
-
-void InitSystem::GenerateTriangulationEquil() {
+void InitSystem::GenerateTriangulationEquil(MembraneMC& sys) {
     // Output initial configuration as an off file
 	ofstream myfile;
-	myfile.open(sys->output_path+"/out.off");
-	myfile << 0 << " " << 0 << " " << sys->lengths[0] << " " << sys->lengths[1] << endl;
+	myfile.open(sys.output_path+"/out.off");
+	myfile << 0 << " " << 0 << " " << sys.lengths[0] << " " << sys.lengths[1] << endl;
     myfile << 1 << " " << 1 << endl;
-    myfile << sys->vertices << endl;
-    for(int i=0; i<sys->dim_x; i++){
-		for(int j=0; j<sys->dim_y; j++){	
-			myfile << sys->lengths[0]*radii_tri[j+i*dim_y][0] << " " << sys->lengths[1]*radii_tri[j+i*dim_y][1] << endl;
+    myfile << sys.vertices << endl;
+    for(int i=0; i<sys.dim_x; i++){
+		for(int j=0; j<sys.dim_y; j++){	
+			myfile << sys.lengths[0]*sys.radii_tri[j+i*sys.dim_y][0] << " " << sys.lengths[1]*sys.radii_tri[j+i*sys.dim_y][1] << endl;
 		}
 	}
 	myfile << endl;
-	myfile << sys->faces << endl;
-    const int faces_active = sys->faces;
+	myfile << sys.faces << endl;
+    const int faces_active = sys.faces;
 	int triangle_list_active[faces_active][3];
 	int face_count = 0;
     // Add triangles in body
-    for(int i=0; i<sys->dim_x; i++){
-        for(int j=0; j<sys->dim_y; j++){
+    for(int i=0; i<sys.dim_x; i++){
+        for(int j=0; j<sys.dim_y; j++){
             if(i%2==0) {
 				int dummy_up = j+1;
-				if(dummy_up >= sys->dim_y) {
-					dummy_up -= sys->dim_y;
+				if(dummy_up >= sys.dim_y) {
+					dummy_up -= sys.dim_y;
 				}
 				int dummy_down = j-1;
 				if(dummy_down < 0) {
-					dummy_down += sys->dim_y;
+					dummy_down += sys.dim_y;
 				}
 				int dummy_right = i+1;
-				if(dummy_right >= sys->dim_x) {
-					dummy_right -= sys->dim_x;
+				if(dummy_right >= sys.dim_x) {
+					dummy_right -= sys.dim_x;
 				}
 				int dummy_left = i-1;
 				if(dummy_left < 0) {
-					dummy_left += sys->dim_x;
+					dummy_left += sys.dim_x;
 				}
                 // Basic idea here is to form the six triangles around each point, and then check to see if they are on the active triangle list
                 // If not, add to active triangle list and write to myfile
                 // New idea: generate six neighboring points, attempt to add to 
                 int point_neighbor_trials[6];
-                point_neighbor_trials[0] = dummy_up+i*sys->dim_y;
-                point_neighbor_trials[1] = j+dummy_right*sys->dim_y;
-                point_neighbor_trials[2] = dummy_down+dummy_right*sys->dim_y;
-                point_neighbor_trials[3] = dummy_down+i*sys->dim_y;
-                point_neighbor_trials[4] = j+dummy_left*sys->dim_y;
-                point_neighbor_trials[5] = dummy_down+dummy_left*sys->dim_y;
+                point_neighbor_trials[0] = dummy_up+i*sys.dim_y;
+                point_neighbor_trials[1] = j+dummy_right*sys.dim_y;
+                point_neighbor_trials[2] = dummy_down+dummy_right*sys.dim_y;
+                point_neighbor_trials[3] = dummy_down+i*sys.dim_y;
+                point_neighbor_trials[4] = j+dummy_left*sys.dim_y;
+                point_neighbor_trials[5] = dummy_down+dummy_left*sys.dim_y;
                 int triangle_trials[6][3];
-                triangle_trials[0][0] = j+i*sys->dim_y; triangle_trials[0][1] = dummy_up+i*sys->dim_y; triangle_trials[0][2] = j+dummy_right*sys->dim_y;
-                triangle_trials[1][0] = j+i*sys->dim_y; triangle_trials[1][1] = dummy_down+dummy_right*sys->dim_y; triangle_trials[1][2] = j+dummy_right*sys->dim_y;
-                triangle_trials[2][0] = j+i*sys->dim_y; triangle_trials[2][1] = dummy_down+i*sys->dim_y; triangle_trials[2][2] = dummy_down+dummy_right*sys->dim_y;
-                triangle_trials[3][0] = j+i*sys->dim_y; triangle_trials[3][1] = dummy_up+i*sys->dim_y; triangle_trials[3][2] = j+dummy_left*sys->dim_y;
-                triangle_trials[4][0] = j+i*sys->dim_y; triangle_trials[4][1] = dummy_down+dummy_left*sys->dim_y; triangle_trials[4][2] = j+dummy_left*sys->dim_y;
-                triangle_trials[5][0] = j+i*sys->dim_y; triangle_trials[5][1] = dummy_down+i*sys->dim_y; triangle_trials[5][2] = dummy_down+dummy_left*sys->dim_y;
+                triangle_trials[0][0] = j+i*sys.dim_y; triangle_trials[0][1] = dummy_up+i*sys.dim_y; triangle_trials[0][2] = j+dummy_right*sys.dim_y;
+                triangle_trials[1][0] = j+i*sys.dim_y; triangle_trials[1][1] = dummy_down+dummy_right*sys.dim_y; triangle_trials[1][2] = j+dummy_right*sys.dim_y;
+                triangle_trials[2][0] = j+i*sys.dim_y; triangle_trials[2][1] = dummy_down+i*sys.dim_y; triangle_trials[2][2] = dummy_down+dummy_right*sys.dim_y;
+                triangle_trials[3][0] = j+i*sys.dim_y; triangle_trials[3][1] = dummy_up+i*sys.dim_y; triangle_trials[3][2] = j+dummy_left*sys.dim_y;
+                triangle_trials[4][0] = j+i*sys.dim_y; triangle_trials[4][1] = dummy_down+dummy_left*sys.dim_y; triangle_trials[4][2] = j+dummy_left*sys.dim_y;
+                triangle_trials[5][0] = j+i*sys.dim_y; triangle_trials[5][1] = dummy_down+i*sys.dim_y; triangle_trials[5][2] = dummy_down+dummy_left*sys.dim_y;
                 // Attempt to add triangles to triangle_list_active. If not a duplicate, print to file
                 for(int k=0; k<6; k++) {
                     bool Replica = false;
@@ -152,38 +143,38 @@ void InitSystem::GenerateTriangulationEquil() {
             }
             else if(i%2==1) {
 				int dummy_up = j+1;
-				if(dummy_up >= sys->dim_y) {
-					dummy_up -= sys->dim_y;
+				if(dummy_up >= sys.dim_y) {
+					dummy_up -= sys.dim_y;
 				}
 				int dummy_down = j-1;
 				if(dummy_down < 0) {
-					dummy_down += sys->dim_y;
+					dummy_down += sys.dim_y;
 				}
 				int dummy_right = i+1;
-				if(dummy_right >= sys->dim_x) {
-					dummy_right -= sys->dim_x;
+				if(dummy_right >= sys.dim_x) {
+					dummy_right -= sys.dim_x;
 				}
 				int dummy_left = i-1;
 				if(dummy_left < 0) {
-					dummy_left += sys->dim_x;
+					dummy_left += sys.dim_x;
 				}
                 // Basic idea here is to form the six triangles around each point, and then check to see if they are on the active triangle list
                 // If not, add to active triangle list and write to myfile
                 // New idea: generate six neighboring points, attempt to add to 
                 int point_neighbor_trials[6];
-                point_neighbor_trials[0] = dummy_up+i*sys->dim_y;
-                point_neighbor_trials[1] = dummy_up+dummy_right*sys->dim_y;
-                point_neighbor_trials[2] = j+dummy_right*sys->dim_y;
-                point_neighbor_trials[3] = dummy_down+i*sys->dim_y;
-                point_neighbor_trials[4] = dummy_up+dummy_left*sys->dim_y;
-                point_neighbor_trials[5] = j+dummy_left*sys->dim_y;
+                point_neighbor_trials[0] = dummy_up+i*sys.dim_y;
+                point_neighbor_trials[1] = dummy_up+dummy_right*sys.dim_y;
+                point_neighbor_trials[2] = j+dummy_right*sys.dim_y;
+                point_neighbor_trials[3] = dummy_down+i*sys.dim_y;
+                point_neighbor_trials[4] = dummy_up+dummy_left*sys.dim_y;
+                point_neighbor_trials[5] = j+dummy_left*sys.dim_y;
                 int triangle_trials[6][3];
-                triangle_trials[0][0] = j+i*sys->dim_y; triangle_trials[0][1] = dummy_up+i*sys->dim_y; triangle_trials[0][2] = dummy_up+dummy_right*sys->dim_y;
-                triangle_trials[1][0] = j+i*sys->dim_y; triangle_trials[1][1] = dummy_up+dummy_right*sys->dim_y; triangle_trials[1][2] = j+dummy_right*sys->dim_y;
-                triangle_trials[2][0] = j+i*sys->dim_y; triangle_trials[2][1] = dummy_down+i*sys->dim_y; triangle_trials[2][2] = j+dummy_right*sys->dim_y;
-                triangle_trials[3][0] = j+i*sys->dim_y; triangle_trials[3][1] = dummy_up+i*sys->dim_y; triangle_trials[3][2] = dummy_up+dummy_left*sys->dim_y;
-                triangle_trials[4][0] = j+i*sys->dim_y; triangle_trials[4][1] = dummy_up+dummy_left*sys->dim_y; triangle_trials[4][2] = j+dummy_left*sys->dim_y;
-                triangle_trials[5][0] = j+i*sys->dim_y; triangle_trials[5][1] = dummy_down+i*sys->dim_y; triangle_trials[5][2] = j+dummy_left*sys->dim_y;
+                triangle_trials[0][0] = j+i*sys.dim_y; triangle_trials[0][1] = dummy_up+i*sys.dim_y; triangle_trials[0][2] = dummy_up+dummy_right*sys.dim_y;
+                triangle_trials[1][0] = j+i*sys.dim_y; triangle_trials[1][1] = dummy_up+dummy_right*sys.dim_y; triangle_trials[1][2] = j+dummy_right*sys.dim_y;
+                triangle_trials[2][0] = j+i*sys.dim_y; triangle_trials[2][1] = dummy_down+i*sys.dim_y; triangle_trials[2][2] = j+dummy_right*sys.dim_y;
+                triangle_trials[3][0] = j+i*sys.dim_y; triangle_trials[3][1] = dummy_up+i*sys.dim_y; triangle_trials[3][2] = dummy_up+dummy_left*sys.dim_y;
+                triangle_trials[4][0] = j+i*sys.dim_y; triangle_trials[4][1] = dummy_up+dummy_left*sys.dim_y; triangle_trials[4][2] = j+dummy_left*sys.dim_y;
+                triangle_trials[5][0] = j+i*sys.dim_y; triangle_trials[5][1] = dummy_down+i*sys.dim_y; triangle_trials[5][2] = j+dummy_left*sys.dim_y;
                 // Attempt to add triangles to triangle_list_active. If not a duplicate, print to file
                 for(int k=0; k<6; k++) {
                     bool Replica = false;
@@ -218,15 +209,14 @@ void InitSystem::GenerateTriangulationEquil() {
             } 
         }
     }
-    // sys->my_cout << face_count << endl;
 	myfile.close();
 }
 
-inline int InitSystem::LinkTriangleTest(int vertex_1, int vertex_2) {
+inline int InitSystem::LinkTriangleTest(MembraneMC& sys, int vertex_1, int vertex_2) {
 // Determines if two points are linked together
     int link_1_2 = 0;
-    for(int i=0; i<sys->point_neighbor_list[vertex_1].size(); i++) {
-        if(sys->point_neighbor_list[vertex_1][i] == vertex_2) {
+    for(int i=0; i<sys.point_neighbor_list[vertex_1].size(); i++) {
+        if(sys.point_neighbor_list[vertex_1][i] == vertex_2) {
             link_1_2 += 1;
             break;
         }
@@ -234,32 +224,32 @@ inline int InitSystem::LinkTriangleTest(int vertex_1, int vertex_2) {
     return link_1_2;
 }
 
-void InitSystem::UseTriangulation(string name) {
+void InitSystem::UseTriangulation(MembraneMC& sys, string name) {
     ifstream input;
-    input.open(sys->output_path+"/"+name);
-    vector<int> point_neighbor_list_m(sys->vertices, 0);
-    vector<int> point_triangle_list_m(sys->vertices, 0);
+    Utilities util;
+    input.open(sys.output_path+"/"+name);
+    vector<int> point_neighbor_list_m(sys.vertices, 0);
+    vector<int> point_triangle_list_m(sys.vertices, 0);
     // Check to see if param present. If not, do nothing
     if (input.fail()) {
-        sys->my_cout << "No input file." << endl;
+        sys.my_cout << "No input file." << endl;
     }
 
     else{
         string line;
-        // sys->my_cout << "Connectivity file detected. Changing values." << endl;
         // Skip 3 lines
         for(int i=0; i<3; i++){
             getline(input,line);
         }
 
         // Input radius values
-        for(int i=0; i<sys->vertices; i++){
-            input >> radii_tri[i][0] >> radii_tri[i][1];
-            radii_tri[i][2] = 0;
-            radii_tri[i][0] = radii_tri[i][0]/sys->lengths[0];
-            radii_tri[i][1] = radii_tri[i][1]/sys->lengths[1];
-			// sys->my_cout << "x y z " << sys->lengths[0]*radii_tri[i][0] << " " << sys->lengths[1]*radii_tri[i][1] << " " << radii_tri[i][2] << endl;
-            radii_tri_original[i] = radii_tri[i]
+        for(int i=0; i<sys.vertices; i++){
+            input >> sys.radii_tri[i][0] >> sys.radii_tri[i][1];
+            sys.radii_tri[i][2] = 0;
+            sys.radii_tri[i][0] = sys.radii_tri[i][0]/sys.lengths[0];
+            sys.radii_tri[i][1] = sys.radii_tri[i][1]/sys.lengths[1];
+			// sys.my_cout << "x y z " << sys.lengths[0]*sys.radii_tri[i][0] << " " << sys.lengths[1]*sys.radii_tri[i][1] << " " << sys.radii_tri[i][2] << endl;
+            sys.radii_tri_original[i] = sys.radii_tri[i];
             getline(input,line);
         }
 
@@ -277,69 +267,69 @@ void InitSystem::UseTriangulation(string name) {
         // In while loop skipping negative numbers, if to be added value is unique add to first entry of point_neighbor_triangle
         // In while loop skipping negative numbers, if to be added value is the same as already in place value add to second entry of point_neighbor_triangle
         // point_neighbor_triangle is needed to compute needed cotan angles by evaluating angle through standard formula with other links in triangle
-        for(int i=0; i<sys->faces; i++){
-            input >> sys->triangle_list[i][0] >> sys->triangle_list[i][1] >> sys->triangle_list[i][2];
+        for(int i=0; i<sys.faces; i++){
+            input >> sys.triangle_list[i][0] >> sys.triangle_list[i][1] >> sys.triangle_list[i][2];
             // Keep orientation consistent here
             // Initial basis is all normals pointing up in z-direction
             double normal_test[3] = {0,0,0};
-            sys->sim_util->NormalTriangle(i, normal_test);
+            util.NormalTriangle(sys, i, normal_test);
             if(normal_test[2] < 0) {
                 // If so, swapping first two entries will make normals okay
-                int triangle_list_0 = sys->triangle_list[i][0];
-                sys->triangle_list[i][0] = sys->triangle_list[i][1];
-                sys->triangle_list[i][1] = triangle_list_0;
+                int triangle_list_0 = sys.triangle_list[i][0];
+                sys.triangle_list[i][0] = sys.triangle_list[i][1];
+                sys.triangle_list[i][1] = triangle_list_0;
             }
-            // sys->my_cout << "For face " << i << " the points are " << sys->triangle_list[i][0] << " " << sys->triangle_list[i][1] << " " << sys->triangle_list[i][2] << endl;
+            // sys.my_cout << "For face " << i << " the points are " << sys.triangle_list[i][0] << " " << sys.triangle_list[i][1] << " " << sys.triangle_list[i][2] << endl;
             // Most likely don't need this for loop, just need to add connections from 0->1, 1->2, 2->1
             int place_holder_nl = 0;
             // Add to point_triangle_list
-            if (sys->point_triangle_list[sys->triangle_list[i][0]][0] == -1) {
-                sys->point_triangle_list[sys->triangle_list[i][0]][0] = i;
-                point_triangle_list_m[sys->triangle_list[i][0]] += 1;
+            if (sys.point_triangle_list[sys.triangle_list[i][0]][0] == -1) {
+                sys.point_triangle_list[sys.triangle_list[i][0]][0] = i;
+                point_triangle_list_m[sys.triangle_list[i][0]] += 1;
             }
             else {
                 place_holder_nl = 1;
-                while(place_holder_nl < sys->neighbor_max) {
-                    if(sys->point_triangle_list[sys->triangle_list[i][0]][place_holder_nl] == -1) {
-                        sys->point_triangle_list[sys->triangle_list[i][0]][place_holder_nl] = i;
-                        place_holder_nl = sys->neighbor_max;
+                while(place_holder_nl < sys.neighbor_max) {
+                    if(sys.point_triangle_list[sys.triangle_list[i][0]][place_holder_nl] == -1) {
+                        sys.point_triangle_list[sys.triangle_list[i][0]][place_holder_nl] = i;
+                        place_holder_nl = sys.neighbor_max;
                     }
                     place_holder_nl += 1;
                 }
                 place_holder_nl = 0;
-                point_triangle_list_m[sys->triangle_list[i][0]] += 1;
+                point_triangle_list_m[sys.triangle_list[i][0]] += 1;
             }
-            if (sys->point_triangle_list[sys->triangle_list[i][1]][0] == -1) {
-                sys->point_triangle_list[sys->triangle_list[i][1]][0] = i;
-                point_triangle_list_m[sys->triangle_list[i][1]] += 1;
+            if (sys.point_triangle_list[sys.triangle_list[i][1]][0] == -1) {
+                sys.point_triangle_list[sys.triangle_list[i][1]][0] = i;
+                point_triangle_list_m[sys.triangle_list[i][1]] += 1;
             }
             else {
                 place_holder_nl = 1;
-                while(place_holder_nl < sys->neighbor_max) {
-                    if(sys->point_triangle_list[sys->triangle_list[i][1]][place_holder_nl] == -1) {
-                        sys->point_triangle_list[sys->triangle_list[i][1]][place_holder_nl] = i;
-                        place_holder_nl = sys->neighbor_max;
+                while(place_holder_nl < sys.neighbor_max) {
+                    if(sys.point_triangle_list[sys.triangle_list[i][1]][place_holder_nl] == -1) {
+                        sys.point_triangle_list[sys.triangle_list[i][1]][place_holder_nl] = i;
+                        place_holder_nl = sys.neighbor_max;
                     }
                     place_holder_nl += 1;
                 }
                 place_holder_nl = 0;
-                point_triangle_list_m[sys->triangle_list[i][1]] += 1;
+                point_triangle_list_m[sys.triangle_list[i][1]] += 1;
             }
-            if (sys->point_triangle_list[sys->triangle_list[i][2]][0] == -1) {
-                sys->point_triangle_list[sys->triangle_list[i][2]][0] = i;
-                point_triangle_list_m[sys->triangle_list[i][2]] += 1;
+            if (sys.point_triangle_list[sys.triangle_list[i][2]][0] == -1) {
+                sys.point_triangle_list[sys.triangle_list[i][2]][0] = i;
+                point_triangle_list_m[sys.triangle_list[i][2]] += 1;
             }
             else {
                 place_holder_nl = 1;
-                while(place_holder_nl < sys->neighbor_max) {
-                    if(sys->point_triangle_list[sys->triangle_list[i][2]][place_holder_nl] == -1) {
-                        sys->point_triangle_list[sys->triangle_list[i][2]][place_holder_nl] = i;
-                        place_holder_nl = sys->neighbor_max;
+                while(place_holder_nl < sys.neighbor_max) {
+                    if(sys.point_triangle_list[sys.triangle_list[i][2]][place_holder_nl] == -1) {
+                        sys.point_triangle_list[sys.triangle_list[i][2]][place_holder_nl] = i;
+                        place_holder_nl = sys.neighbor_max;
                     }
                     place_holder_nl += 1;
                 }
                 place_holder_nl = 0;
-                point_triangle_list_m[sys->triangle_list[i][2]] += 1;
+                point_triangle_list_m[sys.triangle_list[i][2]] += 1;
             }
             // For loop variable was j. Now, idea is the following
             // Sort entries of triangle_list so we have low, medium, high
@@ -348,78 +338,78 @@ void InitSystem::UseTriangulation(string name) {
             int low_tri;
             int med_tri;
             int high_tri;
-            if ((sys->triangle_list[i][0] > sys->triangle_list[i][1]) && (sys->triangle_list[i][1] > sys->triangle_list[i][2])) {
-                high_tri = sys->triangle_list[i][0];
-                med_tri = sys->triangle_list[i][1];
-                low_tri = sys->triangle_list[i][2];
-                // sys->my_cout << "high med low" << endl;
+            if ((sys.triangle_list[i][0] > sys.triangle_list[i][1]) && (sys.triangle_list[i][1] > sys.triangle_list[i][2])) {
+                high_tri = sys.triangle_list[i][0];
+                med_tri = sys.triangle_list[i][1];
+                low_tri = sys.triangle_list[i][2];
+                // sys.my_cout << "high med low" << endl;
             }
-            else if((sys->triangle_list[i][1] > sys->triangle_list[i][0]) && (sys->triangle_list[i][0] > sys->triangle_list[i][2])) {
-                high_tri = sys->triangle_list[i][1];
-                med_tri = sys->triangle_list[i][0];
-                low_tri = sys->triangle_list[i][2];
-                // sys->my_cout << "med high low" << endl;
+            else if((sys.triangle_list[i][1] > sys.triangle_list[i][0]) && (sys.triangle_list[i][0] > sys.triangle_list[i][2])) {
+                high_tri = sys.triangle_list[i][1];
+                med_tri = sys.triangle_list[i][0];
+                low_tri = sys.triangle_list[i][2];
+                // sys.my_cout << "med high low" << endl;
             }
-            else if((sys->triangle_list[i][2] > sys->triangle_list[i][0]) && (sys->triangle_list[i][0] > sys->triangle_list[i][1])) {
-                high_tri = sys->triangle_list[i][2];
-                med_tri = sys->triangle_list[i][0];
-                low_tri = sys->triangle_list[i][1];
-                // sys->my_cout << "med low high" << endl;
+            else if((sys.triangle_list[i][2] > sys.triangle_list[i][0]) && (sys.triangle_list[i][0] > sys.triangle_list[i][1])) {
+                high_tri = sys.triangle_list[i][2];
+                med_tri = sys.triangle_list[i][0];
+                low_tri = sys.triangle_list[i][1];
+                // sys.my_cout << "med low high" << endl;
             }
-            else if((sys->triangle_list[i][2] > sys->triangle_list[i][1]) && (sys->triangle_list[i][1] > sys->triangle_list[i][0])) {
-                high_tri = sys->triangle_list[i][2];
-                med_tri = sys->triangle_list[i][1];
-                low_tri = sys->triangle_list[i][0];
-                // sys->my_cout << "low med high" << endl;
+            else if((sys.triangle_list[i][2] > sys.triangle_list[i][1]) && (sys.triangle_list[i][1] > sys.triangle_list[i][0])) {
+                high_tri = sys.triangle_list[i][2];
+                med_tri = sys.triangle_list[i][1];
+                low_tri = sys.triangle_list[i][0];
+                // sys.my_cout << "low med high" << endl;
             }
-            else if((sys->triangle_list[i][0] > sys->triangle_list[i][2]) && (sys->triangle_list[i][2] > sys->triangle_list[i][1])) {
-                high_tri = sys->triangle_list[i][0];
-                med_tri = sys->triangle_list[i][2];
-                low_tri = sys->triangle_list[i][1];
-                // sys->my_cout << "high low med" << endl;
+            else if((sys.triangle_list[i][0] > sys.triangle_list[i][2]) && (sys.triangle_list[i][2] > sys.triangle_list[i][1])) {
+                high_tri = sys.triangle_list[i][0];
+                med_tri = sys.triangle_list[i][2];
+                low_tri = sys.triangle_list[i][1];
+                // sys.my_cout << "high low med" << endl;
             }
             else {
-                high_tri = sys->triangle_list[i][1];
-                med_tri = sys->triangle_list[i][2];
-                low_tri = sys->triangle_list[i][0];
-                // sys->my_cout << "low high med" << endl;
+                high_tri = sys.triangle_list[i][1];
+                med_tri = sys.triangle_list[i][2];
+                low_tri = sys.triangle_list[i][0];
+                // sys.my_cout << "low high med" << endl;
             }
 
             // Note have to do
             // low -> med, low -> high, med -> low, high -> low, med -> high, high -> med
             // 
             // This case is low -> med, low -> high and reverse cases
-            // sys->my_cout << "Now onto the sorting hat" << endl;
-            if(sys->point_neighbor_list[low_tri][0] == -1){
+            // sys.my_cout << "Now onto the sorting hat" << endl;
+            if(sys.point_neighbor_list[low_tri][0] == -1){
                 // Generalize as triangle list second value is not necessarily 1,2
-                // sys->my_cout << "No neighbors" << endl;
-                sys->point_neighbor_list[low_tri][0] = med_tri;
-                sys->point_neighbor_triangle[low_tri][0][0] = i;
+                // sys.my_cout << "No neighbors" << endl;
+                sys.point_neighbor_list[low_tri][0] = med_tri;
+                sys.point_neighbor_triangle[low_tri][0][0] = i;
                 point_neighbor_list_m[low_tri] += 2;
-                // sys->my_cout << "Neighbor list at " << low_tri << " is now " << sys->point_neighbor_list[low_tri][0] << endl;
+                // sys.my_cout << "Neighbor list at " << low_tri << " is now " << sys.point_neighbor_list[low_tri][0] << endl;
                 // Check opposite direction
                 place_holder_nl = 0;
-                while(place_holder_nl < (sys->neighbor_max-1)) {
-                    if((sys->point_neighbor_list[med_tri][place_holder_nl] == -1)) {
-                        sys->point_neighbor_list[med_tri][place_holder_nl] = low_tri;
-                        sys->point_neighbor_triangle[med_tri][place_holder_nl][0] = i;
-                        // sys->my_cout << "Neighbor list at " << med_tri << " entry " << place_holder_nl <<  " is now " << sys->point_neighbor_list[med_tri][place_holder_nl] << endl;
-                        place_holder_nl = (sys->neighbor_max-1);
+                while(place_holder_nl < (sys.neighbor_max-1)) {
+                    if((sys.point_neighbor_list[med_tri][place_holder_nl] == -1)) {
+                        sys.point_neighbor_list[med_tri][place_holder_nl] = low_tri;
+                        sys.point_neighbor_triangle[med_tri][place_holder_nl][0] = i;
+                        // sys.my_cout << "Neighbor list at " << med_tri << " entry " << place_holder_nl <<  " is now " << sys.point_neighbor_list[med_tri][place_holder_nl] << endl;
+                        place_holder_nl = (sys.neighbor_max-1);
                     }
                     place_holder_nl += 1;
                 }
                 point_neighbor_list_m[med_tri] += 1;
     
-                sys->point_neighbor_list[low_tri][1] = high_tri;
-                sys->point_neighbor_triangle[low_tri][1][0] = i;
-                // sys->my_cout << "Neighbor list at " << low_tri << " is now " << sys->point_neighbor_list[low_tri][1] << endl;
+                sys.point_neighbor_list[low_tri][1] = high_tri;
+                sys.point_neighbor_triangle[low_tri][1][0] = i;
+                // sys.my_cout << "Neighbor list at " << low_tri << " is now " << sys.point_neighbor_list[low_tri][1] << endl;
                 place_holder_nl = 0;
-                while(place_holder_nl < (sys->neighbor_max-1)) {
-                    if((sys->point_neighbor_list[high_tri][place_holder_nl] == -1)) {
-                        sys->point_neighbor_list[high_tri][place_holder_nl] = low_tri;
-                        sys->point_neighbor_triangle[high_tri][place_holder_nl][0] = i;
-                        // sys->my_cout << "Neighbor list at " << high_tri << " entry " << place_holder_nl <<  " is now " << sys->point_neighbor_list[high_tri][place_holder_nl] << endl;
-                        place_holder_nl = (sys->neighbor_max-1);
+                while(place_holder_nl < (sys.neighbor_max-1)) {
+                    if((sys.point_neighbor_list[high_tri][place_holder_nl] == -1)) {
+                        sys.point_neighbor_list[high_tri][place_holder_nl] = low_tri;
+                        sys.point_neighbor_triangle[high_tri][place_holder_nl][0] = i;
+                        // sys.my_cout << "Neighbor list at " << high_tri << " entry " << place_holder_nl <<  " is now " << sys.point_neighbor_list[high_tri][place_holder_nl] << endl;
+                        place_holder_nl = (sys.neighbor_max-1);
                     }
                     place_holder_nl += 1;
                 }
@@ -427,27 +417,27 @@ void InitSystem::UseTriangulation(string name) {
             }
             // Make big else loop in other case 
             else {
-                // sys->my_cout << "Are neighbors initially" << endl;
+                // sys.my_cout << "Are neighbors initially" << endl;
                 // Check to see if low_tri and med_tri are linked
-                int link_low_med = LinkTriangleTest(low_tri, med_tri);
+                int link_low_med = LinkTriangleTest(sys, low_tri, med_tri);
                 // Convert statements to else as there is no else if if it is not not -1
                 if(link_low_med != 1) {
                     place_holder_nl = 0;
-                    while(place_holder_nl < (sys->neighbor_max-1)) {
-                        if((sys->point_neighbor_list[low_tri][place_holder_nl] == -1)) {
-                            sys->point_neighbor_list[low_tri][place_holder_nl] = med_tri;
-                            sys->point_neighbor_triangle[low_tri][place_holder_nl][0] = i;
-                            place_holder_nl = (sys->neighbor_max-1);
+                    while(place_holder_nl < (sys.neighbor_max-1)) {
+                        if((sys.point_neighbor_list[low_tri][place_holder_nl] == -1)) {
+                            sys.point_neighbor_list[low_tri][place_holder_nl] = med_tri;
+                            sys.point_neighbor_triangle[low_tri][place_holder_nl][0] = i;
+                            place_holder_nl = (sys.neighbor_max-1);
                         }
                         place_holder_nl += 1;
                     }
                     point_neighbor_list_m[low_tri] += 1;
                     place_holder_nl = 0;
-                    while(place_holder_nl < (sys->neighbor_max-1)) {
-                        if((sys->point_neighbor_list[med_tri][place_holder_nl] == -1)) {
-                            sys->point_neighbor_list[med_tri][place_holder_nl] = low_tri;
-                            sys->point_neighbor_triangle[med_tri][place_holder_nl][0] = i;
-                            place_holder_nl = (sys->neighbor_max-1);
+                    while(place_holder_nl < (sys.neighbor_max-1)) {
+                        if((sys.point_neighbor_list[med_tri][place_holder_nl] == -1)) {
+                            sys.point_neighbor_list[med_tri][place_holder_nl] = low_tri;
+                            sys.point_neighbor_triangle[med_tri][place_holder_nl][0] = i;
+                            place_holder_nl = (sys.neighbor_max-1);
                         }
                         place_holder_nl += 1;
                     }
@@ -457,37 +447,37 @@ void InitSystem::UseTriangulation(string name) {
                 // Add to second point_neighbor_triangle entry
                 else {
                     for(int j=0; j<point_neighbor_list_m[low_tri]; j++) {
-                        if(sys->point_neighbor_list[low_tri][j] == med_tri) {
-                            sys->point_neighbor_triangle[low_tri][j][1] = i;
+                        if(sys.point_neighbor_list[low_tri][j] == med_tri) {
+                            sys.point_neighbor_triangle[low_tri][j][1] = i;
                             break;
                         }
                     }
                     for(int j=0; j<point_neighbor_list_m[med_tri]; j++) {
-                        if(sys->point_neighbor_list[med_tri][j] == low_tri) {
-                            sys->point_neighbor_triangle[med_tri][j][1] = i;
+                        if(sys.point_neighbor_list[med_tri][j] == low_tri) {
+                            sys.point_neighbor_triangle[med_tri][j][1] = i;
                             break;
                         }
                     }
                 }
 
-                int link_low_high = LinkTriangleTest(low_tri, high_tri);
+                int link_low_high = LinkTriangleTest(sys, low_tri, high_tri);
                 if(link_low_high != 1) {
                     place_holder_nl = 0;
-                    while(place_holder_nl < (sys->neighbor_max-1)) {
-                        if((sys->point_neighbor_list[low_tri][place_holder_nl] == -1)) {
-                            sys->point_neighbor_list[low_tri][place_holder_nl] = high_tri;
-                            sys->point_neighbor_triangle[low_tri][place_holder_nl][0] = i;
-                            place_holder_nl = (sys->neighbor_max-1);
+                    while(place_holder_nl < (sys.neighbor_max-1)) {
+                        if((sys.point_neighbor_list[low_tri][place_holder_nl] == -1)) {
+                            sys.point_neighbor_list[low_tri][place_holder_nl] = high_tri;
+                            sys.point_neighbor_triangle[low_tri][place_holder_nl][0] = i;
+                            place_holder_nl = (sys.neighbor_max-1);
                         }
                         place_holder_nl += 1;
                     }
                     point_neighbor_list_m[low_tri] += 1;
                     place_holder_nl = 0;
-                    while(place_holder_nl < (sys->neighbor_max-1)) {
-                        if((sys->point_neighbor_list[high_tri][place_holder_nl] == -1)) {
-                            sys->point_neighbor_list[high_tri][place_holder_nl] = low_tri;
-                            sys->point_neighbor_triangle[high_tri][place_holder_nl][0] = i;
-                            place_holder_nl = (sys->neighbor_max-1);
+                    while(place_holder_nl < (sys.neighbor_max-1)) {
+                        if((sys.point_neighbor_list[high_tri][place_holder_nl] == -1)) {
+                            sys.point_neighbor_list[high_tri][place_holder_nl] = low_tri;
+                            sys.point_neighbor_triangle[high_tri][place_holder_nl][0] = i;
+                            place_holder_nl = (sys.neighbor_max-1);
                         }
                         place_holder_nl += 1;
                     }
@@ -497,14 +487,14 @@ void InitSystem::UseTriangulation(string name) {
                 // Add to second point_neighbor_triangle entry
                 else {
                     for(int j=0; j<point_neighbor_list_m[low_tri]; j++) {
-                        if(sys->point_neighbor_list[low_tri][j] == high_tri) {
-                            sys->point_neighbor_triangle[low_tri][j][1] = i;
+                        if(sys.point_neighbor_list[low_tri][j] == high_tri) {
+                            sys.point_neighbor_triangle[low_tri][j][1] = i;
                             break;
                         }
                     }
                     for(int j=0; j<point_neighbor_list_m[high_tri]; j++) {
-                        if(sys->point_neighbor_list[high_tri][j] == low_tri) {
-                            sys->point_neighbor_triangle[high_tri][j][1] = i;
+                        if(sys.point_neighbor_list[high_tri][j] == low_tri) {
+                            sys.point_neighbor_triangle[high_tri][j][1] = i;
                             break;
                         }
                     }
@@ -516,24 +506,24 @@ void InitSystem::UseTriangulation(string name) {
                 
             // Can use these values to
             // This case is med -> high and reverse cases
-            int link_med_high = LinkTriangleTest(med_tri, high_tri);
+            int link_med_high = LinkTriangleTest(sys, med_tri, high_tri);
             if(link_med_high != 1) {
                 place_holder_nl = 0;
-                while(place_holder_nl < (sys->neighbor_max-1)) {
-                    if((sys->point_neighbor_list[med_tri][place_holder_nl] == -1)) {
-                        sys->point_neighbor_list[med_tri][place_holder_nl] = high_tri;
-                        sys->point_neighbor_triangle[med_tri][place_holder_nl][0] = i;
-                        place_holder_nl = (sys->neighbor_max-1);
+                while(place_holder_nl < (sys.neighbor_max-1)) {
+                    if((sys.point_neighbor_list[med_tri][place_holder_nl] == -1)) {
+                        sys.point_neighbor_list[med_tri][place_holder_nl] = high_tri;
+                        sys.point_neighbor_triangle[med_tri][place_holder_nl][0] = i;
+                        place_holder_nl = (sys.neighbor_max-1);
                     }
                     place_holder_nl += 1;
                 }
                 point_neighbor_list_m[med_tri] += 1;
                 place_holder_nl = 0;
-                while(place_holder_nl < (sys->neighbor_max-1)) {
-                    if((sys->point_neighbor_list[high_tri][place_holder_nl] == -1)) {
-                        sys->point_neighbor_list[high_tri][place_holder_nl] = med_tri;
-                        sys->point_neighbor_triangle[high_tri][place_holder_nl][0] = i;
-                        place_holder_nl = (sys->neighbor_max-1);
+                while(place_holder_nl < (sys.neighbor_max-1)) {
+                    if((sys.point_neighbor_list[high_tri][place_holder_nl] == -1)) {
+                        sys.point_neighbor_list[high_tri][place_holder_nl] = med_tri;
+                        sys.point_neighbor_triangle[high_tri][place_holder_nl][0] = i;
+                        place_holder_nl = (sys.neighbor_max-1);
                     }
                     place_holder_nl += 1;
                 }
@@ -543,14 +533,14 @@ void InitSystem::UseTriangulation(string name) {
             // Add to second point_neighbor_triangle entry
             else {
                 for(int j=0; j<point_neighbor_list_m[med_tri]; j++) {
-                    if(sys->point_neighbor_list[med_tri][j] == high_tri) {
-                        sys->point_neighbor_triangle[med_tri][j][1] = i;
+                    if(sys.point_neighbor_list[med_tri][j] == high_tri) {
+                        sys.point_neighbor_triangle[med_tri][j][1] = i;
                         break;
                     }
                 }
                 for(int j=0; j<point_neighbor_list_m[high_tri]; j++) {
-                    if(sys->point_neighbor_list[high_tri][j] == med_tri) {
-                        sys->point_neighbor_triangle[high_tri][j][1] = i;
+                    if(sys.point_neighbor_list[high_tri][j] == med_tri) {
+                        sys.point_neighbor_triangle[high_tri][j][1] = i;
                         break;
                     }
                 }
@@ -563,67 +553,62 @@ void InitSystem::UseTriangulation(string name) {
     }
 
     // Now resize all vector entries
-    for(int i=0; i<sys->vertices; i++) {
-        for(int j=0; j<sys->neighbor_max; j++) {
-            if(sys->point_neighbor_list[i][j] == -1) {
-                sys->point_neighbor_list[i].resize(j);
-                sys->point_neighbor_triangle[i].resize(j);
+    for(int i=0; i<sys.vertices; i++) {
+        for(int j=0; j<sys.neighbor_max; j++) {
+            if(sys.point_neighbor_list[i][j] == -1) {
+                sys.point_neighbor_list[i].resize(j);
+                sys.point_neighbor_triangle[i].resize(j);
                 break;
             }
-            if(sys->point_triangle_list[i][j] == -1) {
-                sys->point_triangle_list[i].resize(j);
+            if(sys.point_triangle_list[i][j] == -1) {
+                sys.point_triangle_list[i].resize(j);
             }
         }
-        for(int j=0; j<sys->neighbor_max; j++) {
-            if(sys->point_triangle_list[i][j] == -1) {
-                sys->point_triangle_list[i].resize(j);
+        for(int j=0; j<sys.neighbor_max; j++) {
+            if(sys.point_triangle_list[i][j] == -1) {
+                sys.point_triangle_list[i].resize(j);
                 break;
             }
         }
     }
     // Set reference original values equal to current entries
-    sys->triangle_list_original = sys->triangle_list;
-    sys->point_neighbor_list_original = sys->point_neighbor_list;
-    sys->point_triangle_list_original = sys->point_triangle_list;
-    sys->point_neighbor_triangle_original = sys->point_neighbor_triangle;
-
-    for(int i=0; i<sys->vertices; i++) {
-        // sys->my_cout << "Max neighbors at " << i << " is " << point_neighbor_list_m[i] << endl;
-        // sys->my_cout << "Max triangles at " << i << " is " << point_triangle_list_m[i] << endl;
-    }
+    sys.triangle_list_original = sys.triangle_list;
+    sys.point_neighbor_list_original = sys.point_neighbor_list;
+    sys.point_triangle_list_original = sys.point_triangle_list;
+    sys.point_neighbor_triangle_original = sys.point_neighbor_triangle;
 }
 
-void InitSystem::UseTriangulationRestart(string name) {
+void InitSystem::UseTriangulationRestart(MembraneMC& sys, string name) {
     ifstream input;
-    input.open(sys->output_path+"/"+name);
-    vector<int> point_neighbor_list_m(sys->vertices, 0);
-    vector<int> point_triangle_list_m(sys->vertices, 0);
+    input.open(sys.output_path+"/"+name);
+    vector<int> point_neighbor_list_m(sys.vertices, 0);
+    vector<int> point_triangle_list_m(sys.vertices, 0);
     // Check to see if param present. If not, do nothing
     if (input.fail()) {
-        sys->my_cout << "No input file." << endl;
+        sys.my_cout << "No input file." << endl;
     }
 
     else{
         string line;
-        // sys->my_cout << "Connectivity file detected. Changing values." << endl;
+        // sys.my_cout << "Connectivity file detected. Changing values." << endl;
         // Get box size
-        input >> line >> sys->lengths[0] >> line >> sys->lengths[1] >> line >> sys->lengths[2] >> line >> sys->count_step;
-        scale_xy = sys->lengths[0]/sys->lengths[0]_base;
-        sys->lengths_old = sys->lengths;
+        input >> line >> sys.lengths[0] >> line >> sys.lengths[1] >> line >> sys.lengths[2] >> line >> sys.count_step;
+        sys.scale_xy = sys.lengths[0]/sys.lengths_base[0];
+        sys.lengths_old = sys.lengths;
         // Skip 2 lines
         for(int i=0; i<2; i++){
             getline(input,line);
         } 
         // Input radius values
-        for(int i=0; i<sys->vertices; i++){
-            input >> sys->ising_array[i] >> radii_tri[i][0] >> radii_tri[i][1] >> radii_tri[i][2];
-            if(sys->ising_array[i] == 2) {
-                protein_node[i] = 0;
+        for(int i=0; i<sys.vertices; i++){
+            input >> sys.ising_array[i] >> sys.radii_tri[i][0] >> sys.radii_tri[i][1] >> sys.radii_tri[i][2];
+            if(sys.ising_array[i] == 2) {
+                sys.protein_node[i] = 0;
             }
-            radii_tri[i][0] = radii_tri[i][0]/sys->lengths[0];
-            radii_tri[i][1] = radii_tri[i][1]/sys->lengths[1];
-			// sys->my_cout << "x y z " << sys->lengths[0]*radii_tri[i][0] << " " << sys->lengths[1]*radii_tri[i][1] << " " << radii_tri[i][2] << endl;
-            radii_tri_original[i] = radii_tri[i]
+            sys.radii_tri[i][0] = sys.radii_tri[i][0]/sys.lengths[0];
+            sys.radii_tri[i][1] = sys.radii_tri[i][1]/sys.lengths[1];
+			// sys.my_cout << "x y z " << sys.lengths[0]*sys.radii_tri[i][0] << " " << sys.lengths[1]*sys.radii_tri[i][1] << " " << sys.radii_tri[i][2] << endl;
+            sys.radii_tri_original[i] = sys.radii_tri[i];
             getline(input,line);
         }
 
@@ -641,58 +626,58 @@ void InitSystem::UseTriangulationRestart(string name) {
         // In while loop skipping negative numbers, if to be added value is unique add to first entry of point_neighbor_triangle
         // In while loop skipping negative numbers, if to be added value is the same as already in place value add to second entry of point_neighbor_triangle
         // point_neighbor_triangle is needed to compute needed cotan angles by evaluating angle through standard formula with other links in triangle
-        for(int i=0; i<sys->faces; i++){
-            input >> sys->triangle_list[i][0] >> sys->triangle_list[i][1] >> sys->triangle_list[i][2];
-            // sys->my_cout << "For face " << i << " the points are " << sys->triangle_list[i][0] << " " << sys->triangle_list[i][1] << " " << sys->triangle_list[i][2] << endl;
+        for(int i=0; i<sys.faces; i++){
+            input >> sys.triangle_list[i][0] >> sys.triangle_list[i][1] >> sys.triangle_list[i][2];
+            // sys.my_cout << "For face " << i << " the points are " << sys.triangle_list[i][0] << " " << sys.triangle_list[i][1] << " " << sys.triangle_list[i][2] << endl;
             int place_holder_nl = 0;
             // Add to point_triangle_list
-            if (sys->point_triangle_list[sys->triangle_list[i][0]][0] == -1) {
-                sys->point_triangle_list[sys->triangle_list[i][0]][0] = i;
-                point_triangle_list_m[sys->triangle_list[i][0]] += 1;
+            if (sys.point_triangle_list[sys.triangle_list[i][0]][0] == -1) {
+                sys.point_triangle_list[sys.triangle_list[i][0]][0] = i;
+                point_triangle_list_m[sys.triangle_list[i][0]] += 1;
             }
             else {
                 place_holder_nl = 1;
-                while(place_holder_nl < sys->neighbor_max) {
-                    if(sys->point_triangle_list[sys->triangle_list[i][0]][place_holder_nl] == -1) {
-                        sys->point_triangle_list[sys->triangle_list[i][0]][place_holder_nl] = i;
-                        place_holder_nl = sys->neighbor_max;
+                while(place_holder_nl < sys.neighbor_max) {
+                    if(sys.point_triangle_list[sys.triangle_list[i][0]][place_holder_nl] == -1) {
+                        sys.point_triangle_list[sys.triangle_list[i][0]][place_holder_nl] = i;
+                        place_holder_nl = sys.neighbor_max;
                     }
                     place_holder_nl += 1;
                 }
                 place_holder_nl = 0;
-                point_triangle_list_m[sys->triangle_list[i][0]] += 1;
+                point_triangle_list_m[sys.triangle_list[i][0]] += 1;
             }
-            if (sys->point_triangle_list[sys->triangle_list[i][1]][0] == -1) {
-                sys->point_triangle_list[sys->triangle_list[i][1]][0] = i;
-                point_triangle_list_m[sys->triangle_list[i][1]] += 1;
+            if (sys.point_triangle_list[sys.triangle_list[i][1]][0] == -1) {
+                sys.point_triangle_list[sys.triangle_list[i][1]][0] = i;
+                point_triangle_list_m[sys.triangle_list[i][1]] += 1;
             }
             else {
                 place_holder_nl = 1;
-                while(place_holder_nl < sys->neighbor_max) {
-                    if(sys->point_triangle_list[sys->triangle_list[i][1]][place_holder_nl] == -1) {
-                        sys->point_triangle_list[sys->triangle_list[i][1]][place_holder_nl] = i;
-                        place_holder_nl = sys->neighbor_max;
+                while(place_holder_nl < sys.neighbor_max) {
+                    if(sys.point_triangle_list[sys.triangle_list[i][1]][place_holder_nl] == -1) {
+                        sys.point_triangle_list[sys.triangle_list[i][1]][place_holder_nl] = i;
+                        place_holder_nl = sys.neighbor_max;
                     }
                     place_holder_nl += 1;
                 }
                 place_holder_nl = 0;
-                point_triangle_list_m[sys->triangle_list[i][1]] += 1;
+                point_triangle_list_m[sys.triangle_list[i][1]] += 1;
             }
-            if (sys->point_triangle_list[sys->triangle_list[i][2]][0] == -1) {
-                sys->point_triangle_list[sys->triangle_list[i][2]][0] = i;
-                point_triangle_list_m[sys->triangle_list[i][2]] += 1;
+            if (sys.point_triangle_list[sys.triangle_list[i][2]][0] == -1) {
+                sys.point_triangle_list[sys.triangle_list[i][2]][0] = i;
+                point_triangle_list_m[sys.triangle_list[i][2]] += 1;
             }
             else {
                 place_holder_nl = 1;
-                while(place_holder_nl < sys->neighbor_max) {
-                    if(sys->point_triangle_list[sys->triangle_list[i][2]][place_holder_nl] == -1) {
-                        sys->point_triangle_list[sys->triangle_list[i][2]][place_holder_nl] = i;
-                        place_holder_nl = sys->neighbor_max;
+                while(place_holder_nl < sys.neighbor_max) {
+                    if(sys.point_triangle_list[sys.triangle_list[i][2]][place_holder_nl] == -1) {
+                        sys.point_triangle_list[sys.triangle_list[i][2]][place_holder_nl] = i;
+                        place_holder_nl = sys.neighbor_max;
                     }
                     place_holder_nl += 1;
                 }
                 place_holder_nl = 0;
-                point_triangle_list_m[sys->triangle_list[i][2]] += 1;
+                point_triangle_list_m[sys.triangle_list[i][2]] += 1;
             }
             // For loop variable was j. Now, idea is the following
             // Sort entries of triangle_list so we have low, medium, high
@@ -701,78 +686,78 @@ void InitSystem::UseTriangulationRestart(string name) {
             int low_tri;
             int med_tri;
             int high_tri;
-            if ((sys->triangle_list[i][0] > sys->triangle_list[i][1]) && (sys->triangle_list[i][1] > sys->triangle_list[i][2])) {
-                high_tri = sys->triangle_list[i][0];
-                med_tri = sys->triangle_list[i][1];
-                low_tri = sys->triangle_list[i][2];
-                // sys->my_cout << "high med low" << endl;
+            if ((sys.triangle_list[i][0] > sys.triangle_list[i][1]) && (sys.triangle_list[i][1] > sys.triangle_list[i][2])) {
+                high_tri = sys.triangle_list[i][0];
+                med_tri = sys.triangle_list[i][1];
+                low_tri = sys.triangle_list[i][2];
+                // sys.my_cout << "high med low" << endl;
             }
-            else if((sys->triangle_list[i][1] > sys->triangle_list[i][0]) && (sys->triangle_list[i][0] > sys->triangle_list[i][2])) {
-                high_tri = sys->triangle_list[i][1];
-                med_tri = sys->triangle_list[i][0];
-                low_tri = sys->triangle_list[i][2];
-                // sys->my_cout << "med high low" << endl;
+            else if((sys.triangle_list[i][1] > sys.triangle_list[i][0]) && (sys.triangle_list[i][0] > sys.triangle_list[i][2])) {
+                high_tri = sys.triangle_list[i][1];
+                med_tri = sys.triangle_list[i][0];
+                low_tri = sys.triangle_list[i][2];
+                // sys.my_cout << "med high low" << endl;
             }
-            else if((sys->triangle_list[i][2] > sys->triangle_list[i][0]) && (sys->triangle_list[i][0] > sys->triangle_list[i][1])) {
-                high_tri = sys->triangle_list[i][2];
-                med_tri = sys->triangle_list[i][0];
-                low_tri = sys->triangle_list[i][1];
-                // sys->my_cout << "med low high" << endl;
+            else if((sys.triangle_list[i][2] > sys.triangle_list[i][0]) && (sys.triangle_list[i][0] > sys.triangle_list[i][1])) {
+                high_tri = sys.triangle_list[i][2];
+                med_tri = sys.triangle_list[i][0];
+                low_tri = sys.triangle_list[i][1];
+                // sys.my_cout << "med low high" << endl;
             }
-            else if((sys->triangle_list[i][2] > sys->triangle_list[i][1]) && (sys->triangle_list[i][1] > sys->triangle_list[i][0])) {
-                high_tri = sys->triangle_list[i][2];
-                med_tri = sys->triangle_list[i][1];
-                low_tri = sys->triangle_list[i][0];
-                // sys->my_cout << "low med high" << endl;
+            else if((sys.triangle_list[i][2] > sys.triangle_list[i][1]) && (sys.triangle_list[i][1] > sys.triangle_list[i][0])) {
+                high_tri = sys.triangle_list[i][2];
+                med_tri = sys.triangle_list[i][1];
+                low_tri = sys.triangle_list[i][0];
+                // sys.my_cout << "low med high" << endl;
             }
-            else if((sys->triangle_list[i][0] > sys->triangle_list[i][2]) && (sys->triangle_list[i][2] > sys->triangle_list[i][1])) {
-                high_tri = sys->triangle_list[i][0];
-                med_tri = sys->triangle_list[i][2];
-                low_tri = sys->triangle_list[i][1];
-                // sys->my_cout << "high low med" << endl;
+            else if((sys.triangle_list[i][0] > sys.triangle_list[i][2]) && (sys.triangle_list[i][2] > sys.triangle_list[i][1])) {
+                high_tri = sys.triangle_list[i][0];
+                med_tri = sys.triangle_list[i][2];
+                low_tri = sys.triangle_list[i][1];
+                // sys.my_cout << "high low med" << endl;
             }
             else {
-                high_tri = sys->triangle_list[i][1];
-                med_tri = sys->triangle_list[i][2];
-                low_tri = sys->triangle_list[i][0];
-                // sys->my_cout << "low high med" << endl;
+                high_tri = sys.triangle_list[i][1];
+                med_tri = sys.triangle_list[i][2];
+                low_tri = sys.triangle_list[i][0];
+                // sys.my_cout << "low high med" << endl;
             }
 
             // Note have to do
             // low -> med, low -> high, med -> low, high -> low, med -> high, high -> med
             // 
             // This case is low -> med, low -> high and reverse cases
-            // sys->my_cout << "Now onto the sorting hat" << endl;
-            if(sys->point_neighbor_list[low_tri][0] == -1){
+            // sys.my_cout << "Now onto the sorting hat" << endl;
+            if(sys.point_neighbor_list[low_tri][0] == -1){
                 // Generalize as triangle list second value is not necessarily 1,2
-                // sys->my_cout << "No neighbors" << endl;
-                sys->point_neighbor_list[low_tri][0] = med_tri;
-                sys->point_neighbor_triangle[low_tri][0][0] = i;
+                // sys.my_cout << "No neighbors" << endl;
+                sys.point_neighbor_list[low_tri][0] = med_tri;
+                sys.point_neighbor_triangle[low_tri][0][0] = i;
                 point_neighbor_list_m[low_tri] += 2;
-                // sys->my_cout << "Neighbor list at " << low_tri << " is now " << point_neighbor_list[low_tri][0] << endl;
+                // sys.my_cout << "Neighbor list at " << low_tri << " is now " << point_neighbor_list[low_tri][0] << endl;
                 // Check opposite direction
                 place_holder_nl = 0;
-                while(place_holder_nl < (sys->neighbor_max-1)) {
-                    if((sys->point_neighbor_list[med_tri][place_holder_nl] == -1)) {
-                        sys->point_neighbor_list[med_tri][place_holder_nl] = low_tri;
-                        sys->point_neighbor_triangle[med_tri][place_holder_nl][0] = i;
-                        // sys->my_cout << "Neighbor list at " << med_tri << " entry " << place_holder_nl <<  " is now " << point_neighbor_list[med_tri][place_holder_nl] << endl;
-                        place_holder_nl = (sys->neighbor_max-1);
+                while(place_holder_nl < (sys.neighbor_max-1)) {
+                    if((sys.point_neighbor_list[med_tri][place_holder_nl] == -1)) {
+                        sys.point_neighbor_list[med_tri][place_holder_nl] = low_tri;
+                        sys.point_neighbor_triangle[med_tri][place_holder_nl][0] = i;
+                        // sys.my_cout << "Neighbor list at " << med_tri << " entry " << place_holder_nl <<  " is now " << point_neighbor_list[med_tri][place_holder_nl] << endl;
+                        place_holder_nl = (sys.neighbor_max-1);
                     }
                     place_holder_nl += 1;
                 }
                 point_neighbor_list_m[med_tri] += 1;
     
-                sys->point_neighbor_list[low_tri][1] = high_tri;
-                sys->point_neighbor_triangle[low_tri][1][0] = i;
-                // sys->my_cout << "Neighbor list at " << low_tri << " is now " << point_neighbor_list[low_tri][1] << endl;
+                sys.point_neighbor_list[low_tri][1] = high_tri;
+                sys.point_neighbor_triangle[low_tri][1][0] = i;
+                // sys.my_cout << "Neighbor list at " << low_tri << " is now " << point_neighbor_list[low_tri][1] << endl;
                 place_holder_nl = 0;
-                while(place_holder_nl < (sys->neighbor_max-1)) {
-                    if((sys->point_neighbor_list[high_tri][place_holder_nl] == -1)) {
-                        sys->point_neighbor_list[high_tri][place_holder_nl] = low_tri;
-                        sys->point_neighbor_triangle[high_tri][place_holder_nl][0] = i;
-                        // sys->my_cout << "Neighbor list at " << high_tri << " entry " << place_holder_nl <<  " is now " << point_neighbor_list[high_tri][place_holder_nl] << endl;
-                        place_holder_nl = (sys->neighbor_max-1);
+                while(place_holder_nl < (sys.neighbor_max-1)) {
+                    if((sys.point_neighbor_list[high_tri][place_holder_nl] == -1)) {
+                        sys.point_neighbor_list[high_tri][place_holder_nl] = low_tri;
+                        sys.point_neighbor_triangle[high_tri][place_holder_nl][0] = i;
+                        // sys.my_cout << "Neighbor list at " << high_tri << " entry " << place_holder_nl <<  " is now " << point_neighbor_list[high_tri][place_holder_nl] << endl;
+                        place_holder_nl = (sys.neighbor_max-1);
                     }
                     place_holder_nl += 1;
                 }
@@ -780,27 +765,27 @@ void InitSystem::UseTriangulationRestart(string name) {
             }
             // Make big else loop in other case 
             else {
-                // sys->my_cout << "Are neighbors initially" << endl;
+                // sys.my_cout << "Are neighbors initially" << endl;
                 // Check to see if low_tri and med_tri are linked
-                int link_low_med = LinkTriangleTest(low_tri, med_tri);
+                int link_low_med = LinkTriangleTest(sys, low_tri, med_tri);
                 // Convert statements to else as there is no else if if it is not not -1
                 if(link_low_med != 1) {
                     place_holder_nl = 0;
-                    while(place_holder_nl < (sys->neighbor_max-1)) {
-                        if((sys->point_neighbor_list[low_tri][place_holder_nl] == -1)) {
-                            sys->point_neighbor_list[low_tri][place_holder_nl] = med_tri;
-                            sys->point_neighbor_triangle[low_tri][place_holder_nl][0] = i;
-                            place_holder_nl = (sys->neighbor_max-1);
+                    while(place_holder_nl < (sys.neighbor_max-1)) {
+                        if((sys.point_neighbor_list[low_tri][place_holder_nl] == -1)) {
+                            sys.point_neighbor_list[low_tri][place_holder_nl] = med_tri;
+                            sys.point_neighbor_triangle[low_tri][place_holder_nl][0] = i;
+                            place_holder_nl = (sys.neighbor_max-1);
                         }
                         place_holder_nl += 1;
                     }
                     point_neighbor_list_m[low_tri] += 1;
                     place_holder_nl = 0;
-                    while(place_holder_nl < (sys->neighbor_max-1)) {
-                        if((sys->point_neighbor_list[med_tri][place_holder_nl] == -1)) {
-                            sys->point_neighbor_list[med_tri][place_holder_nl] = low_tri;
-                            sys->point_neighbor_triangle[med_tri][place_holder_nl][0] = i;
-                            place_holder_nl = (sys->neighbor_max-1);
+                    while(place_holder_nl < (sys.neighbor_max-1)) {
+                        if((sys.point_neighbor_list[med_tri][place_holder_nl] == -1)) {
+                            sys.point_neighbor_list[med_tri][place_holder_nl] = low_tri;
+                            sys.point_neighbor_triangle[med_tri][place_holder_nl][0] = i;
+                            place_holder_nl = (sys.neighbor_max-1);
                         }
                         place_holder_nl += 1;
                     }
@@ -810,37 +795,37 @@ void InitSystem::UseTriangulationRestart(string name) {
                 // Add to second point_neighbor_triangle entry
                 else {
                     for(int j=0; j<point_neighbor_list_m[low_tri]; j++) {
-                        if(sys->point_neighbor_list[low_tri][j] == med_tri) {
-                            sys->point_neighbor_triangle[low_tri][j][1] = i;
+                        if(sys.point_neighbor_list[low_tri][j] == med_tri) {
+                            sys.point_neighbor_triangle[low_tri][j][1] = i;
                             break;
                         }
                     }
                     for(int j=0; j<point_neighbor_list_m[med_tri]; j++) {
-                        if(sys->point_neighbor_list[med_tri][j] == low_tri) {
-                            sys->point_neighbor_triangle[med_tri][j][1] = i;
+                        if(sys.point_neighbor_list[med_tri][j] == low_tri) {
+                            sys.point_neighbor_triangle[med_tri][j][1] = i;
                             break;
                         }
                     }
                 }
 
-                int link_low_high = LinkTriangleTest(low_tri, high_tri);
+                int link_low_high = LinkTriangleTest(sys, low_tri, high_tri);
                 if(link_low_high != 1) {
                     place_holder_nl = 0;
-                    while(place_holder_nl < (sys->neighbor_max-1)) {
-                        if((sys->point_neighbor_list[low_tri][place_holder_nl] == -1)) {
-                            sys->point_neighbor_list[low_tri][place_holder_nl] = high_tri;
-                            sys->point_neighbor_triangle[low_tri][place_holder_nl][0] = i;
-                            place_holder_nl = (sys->neighbor_max-1);
+                    while(place_holder_nl < (sys.neighbor_max-1)) {
+                        if((sys.point_neighbor_list[low_tri][place_holder_nl] == -1)) {
+                            sys.point_neighbor_list[low_tri][place_holder_nl] = high_tri;
+                            sys.point_neighbor_triangle[low_tri][place_holder_nl][0] = i;
+                            place_holder_nl = (sys.neighbor_max-1);
                         }
                         place_holder_nl += 1;
                     }
                     point_neighbor_list_m[low_tri] += 1;
                     place_holder_nl = 0;
-                    while(place_holder_nl < (sys->neighbor_max-1)) {
-                        if((sys->point_neighbor_list[high_tri][place_holder_nl] == -1)) {
-                            sys->point_neighbor_list[high_tri][place_holder_nl] = low_tri;
-                            sys->point_neighbor_triangle[high_tri][place_holder_nl][0] = i;
-                            place_holder_nl = (sys->neighbor_max-1);
+                    while(place_holder_nl < (sys.neighbor_max-1)) {
+                        if((sys.point_neighbor_list[high_tri][place_holder_nl] == -1)) {
+                            sys.point_neighbor_list[high_tri][place_holder_nl] = low_tri;
+                            sys.point_neighbor_triangle[high_tri][place_holder_nl][0] = i;
+                            place_holder_nl = (sys.neighbor_max-1);
                         }
                         place_holder_nl += 1;
                     }
@@ -850,14 +835,14 @@ void InitSystem::UseTriangulationRestart(string name) {
                 // Add to second point_neighbor_triangle entry
                 else {
                     for(int j=0; j<point_neighbor_list_m[low_tri]; j++) {
-                        if(sys->point_neighbor_list[low_tri][j] == high_tri) {
-                            sys->point_neighbor_triangle[low_tri][j][1] = i;
+                        if(sys.point_neighbor_list[low_tri][j] == high_tri) {
+                            sys.point_neighbor_triangle[low_tri][j][1] = i;
                             break;
                         }
                     }
                     for(int j=0; j<point_neighbor_list_m[high_tri]; j++) {
-                        if(sys->point_neighbor_list[high_tri][j] == low_tri) {
-                            sys->point_neighbor_triangle[high_tri][j][1] = i;
+                        if(sys.point_neighbor_list[high_tri][j] == low_tri) {
+                            sys.point_neighbor_triangle[high_tri][j][1] = i;
                             break;
                         }
                     }
@@ -869,24 +854,24 @@ void InitSystem::UseTriangulationRestart(string name) {
                 
             // Can use these values to
             // This case is med -> high and reverse cases
-            int link_med_high = LinkTriangleTest(med_tri, high_tri);
+            int link_med_high = LinkTriangleTest(sys, med_tri, high_tri);
             if(link_med_high != 1) {
                 place_holder_nl = 0;
-                while(place_holder_nl < (sys->neighbor_max-1)) {
-                    if((sys->point_neighbor_list[med_tri][place_holder_nl] == -1)) {
-                        sys->point_neighbor_list[med_tri][place_holder_nl] = high_tri;
-                        sys->point_neighbor_triangle[med_tri][place_holder_nl][0] = i;
-                        place_holder_nl = (sys->neighbor_max-1);
+                while(place_holder_nl < (sys.neighbor_max-1)) {
+                    if((sys.point_neighbor_list[med_tri][place_holder_nl] == -1)) {
+                        sys.point_neighbor_list[med_tri][place_holder_nl] = high_tri;
+                        sys.point_neighbor_triangle[med_tri][place_holder_nl][0] = i;
+                        place_holder_nl = (sys.neighbor_max-1);
                     }
                     place_holder_nl += 1;
                 }
                 point_neighbor_list_m[med_tri] += 1;
                 place_holder_nl = 0;
-                while(place_holder_nl < (sys->neighbor_max-1)) {
-                    if((sys->point_neighbor_list[high_tri][place_holder_nl] == -1)) {
-                        sys->point_neighbor_list[high_tri][place_holder_nl] = med_tri;
-                        sys->point_neighbor_triangle[high_tri][place_holder_nl][0] = i;
-                        place_holder_nl = (sys->neighbor_max-1);
+                while(place_holder_nl < (sys.neighbor_max-1)) {
+                    if((sys.point_neighbor_list[high_tri][place_holder_nl] == -1)) {
+                        sys.point_neighbor_list[high_tri][place_holder_nl] = med_tri;
+                        sys.point_neighbor_triangle[high_tri][place_holder_nl][0] = i;
+                        place_holder_nl = (sys.neighbor_max-1);
                     }
                     place_holder_nl += 1;
                 }
@@ -896,14 +881,14 @@ void InitSystem::UseTriangulationRestart(string name) {
             // Add to second point_neighbor_triangle entry
             else {
                 for(int j=0; j<point_neighbor_list_m[med_tri]; j++) {
-                    if(sys->point_neighbor_list[med_tri][j] == high_tri) {
-                        sys->point_neighbor_triangle[med_tri][j][1] = i;
+                    if(sys.point_neighbor_list[med_tri][j] == high_tri) {
+                        sys.point_neighbor_triangle[med_tri][j][1] = i;
                         break;
                     }
                 }
                 for(int j=0; j<point_neighbor_list_m[high_tri]; j++) {
-                    if(sys->point_neighbor_list[high_tri][j] == med_tri) {
-                        sys->point_neighbor_triangle[high_tri][j][1] = i;
+                    if(sys.point_neighbor_list[high_tri][j] == med_tri) {
+                        sys.point_neighbor_triangle[high_tri][j][1] = i;
                         break;
                     }
                 }
@@ -916,32 +901,27 @@ void InitSystem::UseTriangulationRestart(string name) {
     }
 
     // Now resize all vector entries
-    for(int i=0; i<sys->vertices; i++) {
-        for(int j=0; j<sys->neighbor_max; j++) {
-            if(sys->point_neighbor_list[i][j] == -1) {
-                sys->point_neighbor_list[i].resize(j);
-                sys->point_neighbor_triangle[i].resize(j);
+    for(int i=0; i<sys.vertices; i++) {
+        for(int j=0; j<sys.neighbor_max; j++) {
+            if(sys.point_neighbor_list[i][j] == -1) {
+                sys.point_neighbor_list[i].resize(j);
+                sys.point_neighbor_triangle[i].resize(j);
                 break;
             }
-            if(sys->point_triangle_list[i][j] == -1) {
-                sys->point_triangle_list[i].resize(j);
+            if(sys.point_triangle_list[i][j] == -1) {
+                sys.point_triangle_list[i].resize(j);
             }
         }
-        for(int j=0; j<sys->neighbor_max; j++) {
-            if(sys->point_triangle_list[i][j] == -1) {
-                sys->point_triangle_list[i].resize(j);
+        for(int j=0; j<sys.neighbor_max; j++) {
+            if(sys.point_triangle_list[i][j] == -1) {
+                sys.point_triangle_list[i].resize(j);
                 break;
             }
         }
     }
     // Set reference original values equal to current entries
-    sys->triangle_list_original = sys->triangle_list;
-    sys->point_neighbor_list_original = sys->point_neighbor_list;
-    sys->point_triangle_list_original = sys->point_triangle_list;
-    sys->point_neighbor_triangle_original = sys->point_neighbor_triangle;
-
-    for(int i=0; i<sys->vertices; i++) {
-        // sys->my_cout << "Max neighbors at " << i << " is " << point_neighbor_list_m[i] << endl;
-        // sys->my_cout << "Max triangles at " << i << " is " << point_triangle_list_m[i] << endl;
-    }
+    sys.triangle_list_original = sys.triangle_list;
+    sys.point_neighbor_list_original = sys.point_neighbor_list;
+    sys.point_triangle_list_original = sys.point_triangle_list;
+    sys.point_neighbor_triangle_original = sys.point_neighbor_triangle;
 }

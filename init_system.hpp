@@ -19,17 +19,13 @@ using namespace std;
 
 class InitSystem {
     public:
-        InitSystem(MembraneMC*);
+        InitSystem();
         ~InitSystem();
-        void InitializeEquilState();
-        void SaruSeed(unsigned int);
-        void GenerateTriangulationEquil();
-        inline int LinkTriangleTest(int, int);
-        void UseTriangulation(string);
-        void UseTriangulationRestart(string);
-
-        // MembraneMC pointer
-        MembraneMC* sys;
+        void InitializeEquilState(MembraneMC&);
+        void GenerateTriangulationEquil(MembraneMC&);
+        inline int LinkTriangleTest(MembraneMC&, int, int);
+        void UseTriangulation(MembraneMC&, string);
+        void UseTriangulationRestart(MembraneMC&, string);
 };
 
 #endif

@@ -19,6 +19,8 @@ using namespace std;
 
 class Simulation {
     public:
+        Simulation(MembraneMC*);
+        ~Simulation();
         void CheckerboardMCSweep(bool);
         void NextStepSerial();
         void NextStepParallel(bool);
@@ -32,6 +34,9 @@ class Simulation {
         double area_diff_thread[max_threads][8];
         int mass_diff_thread[max_threads][8];
         double magnet_diff_thread[max_threads][8];
+
+        // MembraneMC pointer
+        MembraneMC* sys;
 };
 
 #endif

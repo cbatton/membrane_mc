@@ -40,9 +40,9 @@ class MembraneMC {
         shared_ptr<MCMoves> mc_mover(this);
         shared_ptr<NeighborList> nl(this);
         shared_ptr<OutputSystem> output(this);
-        shared_ptr<Simulation> sim;
-        shared_ptr<SimUtilities> sim_util;
-        shared_ptr<Utilities> util;
+        shared_ptr<Simulation> sim(this);
+        shared_ptr<SimUtilities> sim_util(this);
+        shared_ptr<Utilities> util(this);
         // Variables
         // Initial mesh is points distributed in rectangular grid
         int dim_x = 200; // Nodes in x direction

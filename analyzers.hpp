@@ -20,6 +20,7 @@ using namespace std;
 class Analyzers {
     public:
         Analyzers();
+        Analyzers(MembraneMC*, int, int, int, int); // constructor to call after more info is there
         ~Analyzers();
         void EnergyAnalyzer();
         void AreaAnalyzer();

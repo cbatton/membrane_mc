@@ -22,6 +22,16 @@
 #include "utilities.hpp"
 using namespace std;
 
+MembraneMC::MembraneMC() {
+    // Constructor
+    // Does nothing
+}
+
+MembraneMC::~MembraneMC() {
+    // Destructor
+    // Does nothing
+}
+
 void MembraneMC::InputParam(int& argc, char* argv[]) { // Takes parameters from a file named param
     // MPI housekeeping
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
@@ -151,6 +161,10 @@ void MembraneMC::InputParam(int& argc, char* argv[]) { // Takes parameters from 
         if(world_rank == 0) {
             cout << "seed_base is now " << seed_base << endl;
         }
+        // Initialize random number generators
+        for(int i=0; i<omp_get_max_threads(); i++) {
+            generators.push_back(Saru());
+        }
         initializer->SaruSeed(count_step);
         final_warning = final_time-60.0;
         spon_curv_end = spon_curv[2];
@@ -204,17 +218,31 @@ void MembraneMC::InputParam(int& argc, char* argv[]) { // Takes parameters from 
         initializer->UseTriangulation("out.off");
         // Now Initialize utility classes
         analysis = make_shared<Analyzers>(this, bins, storage_time, storage_neighor, storage_umb_time);
-        mc_mover = make_shared<MCMoves>;
-        nl = make_shared<NeighborList>;
-        output = make_shared<OutputSystem>;
-        sim = make_shared<Simulation>;
-        sim_util = make_shared<SimUtilities>;
-        util = make_shared<Utilities>;
+        // Generate neighbor lists
+        nl->GenerateNeighborList();
+        nl->GenerateCheckerboard();
+        // Place proteins
+        #pragma omp parallel for
+        for(int i=0; i<vertices; i++) {
+            protein_node[i] = -1;
+        }
+        // Place proteins at random
+        for(int i=0; i<num_proteins; i++) {
+            bool check_nodes = true;
+            while(check_nodes) {
+                int j = generator.rand_select(vertices-1);
+                if(ising_array[j] != 2) {
+                    check_nodes = false;
+                    ising_array[j] = 2;
+                    protein_node[j] = 0;
+                }
+            }
+        }
     }
 }
 
 void MembraneMC::Equilibriate(int cycles, chrono::steady_clock::time_point& begin) {
-// Simulate for number of steps
+    // Simulate for number of steps, or time limit
     chrono::steady_clock::time_point t1_other;
     chrono::steady_clock::time_point t2_other;
     chrono::steady_clock::time_point middle;
@@ -226,83 +254,64 @@ void MembraneMC::Equilibriate(int cycles, chrono::steady_clock::time_point& begi
         initializer->SaruSeed(count_step);
         count_step++;
         if(nl_move_start == 0) {
-            nextStepParallel(false);
+            sim->NextStepParallel(false);
         }
         else {
-            nextStepParallel(true);
+            sim->NextStepParallel(true);
         }
         if(i < cycles/4) {
             spon_curv[2] += spon_curv_step;
-            initializeEnergy();
+            util->InitializeEnergy();
         }
         else if(i == cycles/4){
             spon_curv[2] = spon_curv_end;
         }
 		if(i%1000==0) {
             t1_other = chrono::steady_clock::now();
-            double Phi_ = Phi;
-            double Phi_bending_ = Phi_bending;
-            double Phi_phi_ = Phi_phi;
-            initializeEnergy();
-            cout.rdbuf(myfilebuf);
-			cout << "Cycle " << i << endl;
-			cout << "Energy " << std::scientific << Phi << " " << std::scientific << Phi-Phi_ << endl;
-            cout << "Phi_bending " << std::scientific << Phi_bending << " " << std::scientific << Phi_bending-Phi_bending_ << " Phi_phi " << std::scientific << Phi_phi << " " << std::scientific << Phi_phi-Phi_phi_ << endl;
-            cout << "Mass " << Mass << endl;
-            cout << "Area " << Area_total << " and " << Length_x*Length_y << endl;
-            cout << "spon_curv " << spon_curv[2] << endl;
+            double phi_ = phi;
+            double phi_bending_ = phi_bending;
+            double phi_phi_ = phi_phi;
+            util->InitializeEnergy();
+			my_cout << "cycle " << i << endl;
+			my_cout << "energy " << std::scientific << phi << " " << std::scientific << phi-phi_ << endl;
+            my_cout << "phi_bending " << std::scientific << phi_bending << " " << std::scientific << phi_bending-phi_bending_ << " phi_phi " << std::scientific << phi_phi << " " << std::scientific << phi_phi-phi_phi_ << endl;
+            my_cout << "mass " << mass << endl;
+            my_cout << "area " << area_total << " and " << lengths[0]*lengths[1] << endl;
+            my_cout << "spon_curv " << spon_curv[2] << endl;
             t2_other = chrono::steady_clock::now();
             chrono::duration<double> time_span = t2_other-t1_other;
             time_storage_other[0] += time_span.count();
 
             t1_other = chrono::steady_clock::now();
-			linkMaxMin();
+			util->LinkMaxMin();
             t2_other = chrono::steady_clock::now();
             time_span = t2_other-t1_other;
             time_storage_other[1] += time_span.count();
 
             t1_other = chrono::steady_clock::now();
-            cout << "Displace " << steps_rejected_displace << "/" << steps_tested_displace << endl;
-            cout << "Tether " << steps_rejected_tether << "/" << steps_tested_tether << endl;
-            cout << "Mass " << steps_rejected_mass << "/" << steps_tested_mass << endl;
-            cout << "Protein " << steps_rejected_protein << "/" << steps_tested_protein << endl;
-            cout << "Area " << steps_rejected_area << "/" << steps_tested_area << endl;
+            my_cout << "displace " << steps_rejected_displace << "/" << steps_tested_displace << endl;
+            my_cout << "tether " << steps_rejected_tether << "/" << steps_tested_tether << endl;
+            my_cout << "mass " << steps_rejected_mass << "/" << steps_tested_mass << endl;
+            my_cout << "protein " << steps_rejected_protein << "/" << steps_tested_protein << endl;
+            my_cout << "area " << steps_rejected_area << "/" << steps_tested_area << endl;
             t2_other = chrono::steady_clock::now();
             time_span = t2_other-t1_other;
             time_storage_other[2] += time_span.count();
-            // cout << "Percentage of rejected steps: " << steps_rejected_displace+steps_rejected_tether << "/" << steps_tested_displace+steps_tested_tether << endl;
-			/*
-			cout << "Max diff is " << max_diff << endl;
-			cout << "Relative difference is " << relative_diff << endl;
-			max_diff = -1;
-			relative_diff = 0;
-			*/
 		}
 		if(i%1000==0) {
             t1_other = chrono::steady_clock::now();
-			outputTriangulation("int.off");	
+			output->OutputTriangulation("int.off");	
             if(i%40000==0) {
-                outputTriangulation("int_2.off");	
+                output->OutputTriangulation("int_2.off");	
             }
             if(i%4000==0) {
-			    dumpXYZConfig("config_equil.xyz");
-			    // dumpXYZConfigNormal("config_equil_normal.xyz");
-			    // dumpXYZCheckerboard("config_equil_test.xyz");
-			    outputTriangulationAppend("equil.off");	
+			    output->DumpXYZConfig("config_equil.xyz");
+			    output->OutputTriangulationAppend("equil.off");	
             }
             t2_other = chrono::steady_clock::now();
             chrono::duration<double> time_span = t2_other-t1_other;
             time_storage_other[3] += time_span.count();
 		}
-        /*
-        if(i%100000==0) {
-            outputTriangulationStorage();
-        }
-		if(i%40000==0) {
-			dumpPhiNode("phinode_equil.txt");
-            dumpAreaNode("areanode_equil.txt");
-		}
-        */
         middle = chrono::steady_clock::now();
         time_span_m = middle-begin;
         i++;
@@ -310,13 +319,13 @@ void MembraneMC::Equilibriate(int cycles, chrono::steady_clock::time_point& begi
             break;
         }
     }
-    outputTriangulation("int.off");	
+    output->OutputTriangulation("int.off");	
     steps_tested_eq = steps_tested_displace + steps_tested_tether + steps_tested_mass + steps_tested_protein + steps_tested_area;
     steps_rejected_eq = steps_rejected_displace + steps_tested_tether + steps_rejected_mass + steps_rejected_protein + steps_rejected_area;
 }
 
 void MembraneMC::Simulate(int cycles, chrono::steady_clock::time_point& begin) {
-// Simulate for number of cycles
+    // Simulate for number of cycles, or time limit
     chrono::steady_clock::time_point t1_other;
     chrono::steady_clock::time_point t2_other;
     chrono::steady_clock::time_point middle;
@@ -333,96 +342,70 @@ void MembraneMC::Simulate(int cycles, chrono::steady_clock::time_point& begin) {
     ofstream myfile_umb;
     myfile_umb.precision(17);
     myfile_umb.open(output_path+"/mbar_data.txt", std::ios_base::app);
-    cout.precision(8);
+    my_cout.precision(8);
     middle = chrono::steady_clock::now();
     chrono::duration<double> time_span_m = middle-begin;
-    // cout << "Total time: " << time_span.count() << " s" << endl;
     int i = 0;
-    // for(int i=0; i<cycles; i++) {
     while(time_span_m.count() < final_warning) {
         initializer->SaruSeed(count_step);
         count_step++;
-	    nextStepParallel(true);
+	    sim->NextStepParallel(true);
 		if(i%1000==0) {
             t1_other = chrono::steady_clock::now();
-            double Phi_ = Phi;
-            double Phi_bending_ = Phi_bending;
-            double Phi_phi_ = Phi_phi;
-            initializeEnergy();
-            cout.rdbuf(myfilebuf);
-			cout << "Cycle " << i << endl;
-			cout << "Energy " << std::scientific << Phi << " " << std::scientific << Phi-Phi_ << endl;
-            cout << "Phi_bending " << std::scientific << Phi_bending << " " << std::scientific << Phi_bending-Phi_bending_ << " Phi_phi " << std::scientific << Phi_phi << " " << std::scientific << Phi_phi-Phi_phi_ << endl;
-            cout << "Mass " << Mass << endl;
-            cout << "Area " << Area_total << " and " << Length_x*Length_y << endl;
+            double phi_ = phi;
+            double phi_bending_ = phi_bending;
+            double phi_phi_ = phi_phi;
+            util->InitializeEnergy();
+			my_cout << "cycle " << i << endl;
+			my_cout << "energy " << std::scientific << phi << " " << std::scientific << phi-phi_ << endl;
+            my_cout << "phi_bending " << std::scientific << phi_bending << " " << std::scientific << phi_bending-phi_bending_ << " phi_phi " << std::scientific << phi_phi << " " << std::scientific << phi_phi-phi_phi_ << endl;
+            my_cout << "mass " << Mass << endl;
+            my_cout << "area " << Area_total << " and " << Length_x*Length_y << endl;
             t2_other = chrono::steady_clock::now();
             chrono::duration<double> time_span = t2_other-t1_other;
             time_storage_other[0] += time_span.count();
 
             t1_other = chrono::steady_clock::now();
-			linkMaxMin();
+			util->LinkMaxMin();
             t2_other = chrono::steady_clock::now();
             time_span = t2_other-t1_other;
             time_storage_other[1] += time_span.count();
 
             t1_other = chrono::steady_clock::now();
-            cout << "Displace " << steps_rejected_displace << "/" << steps_tested_displace << endl;
-            cout << "Tether " << steps_rejected_tether << "/" << steps_tested_tether << endl;
-            cout << "Mass " << steps_rejected_mass << "/" << steps_tested_mass << endl;
-            cout << "Protein " << steps_rejected_protein << "/" << steps_tested_protein << endl;
-            cout << "Area " << steps_rejected_area << "/" << steps_tested_area << endl;
+            my_cout << "displace " << steps_rejected_displace << "/" << steps_tested_displace << endl;
+            my_cout << "tether " << steps_rejected_tether << "/" << steps_tested_tether << endl;
+            my_cout << "mass " << steps_rejected_mass << "/" << steps_tested_mass << endl;
+            my_cout << "protein " << steps_rejected_protein << "/" << steps_tested_protein << endl;
+            my_cout << "area " << steps_rejected_area << "/" << steps_tested_area << endl;
             t2_other = chrono::steady_clock::now();
             time_span = t2_other-t1_other;
             time_storage_other[2] += time_span.count();
-            // cout << "Percentage of rejected steps: " << steps_rejected_displace+steps_rejected_tether << "/" << steps_tested_displace+steps_tested_tether << endl;
-			/*
-			cout << "Max diff is " << max_diff << endl;
-			cout << "Relative difference is " << relative_diff << endl;
-			max_diff = -1;
-			relative_diff = 0;
-			*/
 		}
 		if(i%1000==0) {
             t1_other = chrono::steady_clock::now();
-			outputTriangulation("int.off");	
+			output->OutputTriangulation("int.off");	
             if(count_step%20000==0) {
-                outputTriangulation("int_2.off");	
+                output->OutputTriangulation("int_2.off");	
             }
             if(i%4000==0) {
-			    dumpXYZConfig("config.xyz");
-			    // dumpXYZConfigNormal("config_normal.xyz");
-			    outputTriangulationAppend("prod.off");	
-			    // dumpXYZCheckerboard("config_test.xyz");
+			    output->DumpXYZConfig("config.xyz");
+			    output->OutputTriangulationAppend("prod.off");	
             }
             t2_other = chrono::steady_clock::now();
             chrono::duration<double> time_span = t2_other-t1_other;
             time_storage_other[3] += time_span.count();
 		}
-        /*
-        if(i%100000==0) {
-            outputTriangulationStorage();
+        if(i%analysis->storage_umb_time==0) {
+            analysis->energy_storage_umb[i/analysis->storage_umb_time] = phi;
+            analysis->UmbOutput(i/analysis->storage_umb_time, myfile_umb);
+            analysis->umb_counts++;
         }
-		if(i%40000==0) {
-			dumpPhiNode("phinode.txt");
-            dumpAreaNode("areanode.txt");
-		}
-        */
-        if(i%storage_neighbor==0) {
-            // sampleNumberNeighbors(i/storage_neighbor);  
-            // dumpNumberNeighbors("numbers_dump.txt", i/storage_neighbor);
-            // neighbors_counts++;
-        }
-        if(i%storage_umb_time==0) {
-            energy_storage_umb[i/storage_umb_time] = Phi;
-            umbOutput(i/storage_umb_time, myfile_umb);
-            umb_counts++;
-        }
-        if(i%storage_time==0) {
-		    energy_storage[i/storage_time] = Phi;
-            area_storage[i/storage_time] = Area_total;
-            area_proj_storage[i/storage_time] = Length_x*Length_y;
-            mass_storage[i/storage_time] = Mass;
-            storage_counts++;
+        if(i%analysis->storage_time==0) {
+		    analysis->energy_storage[i/analysis->storage_time] = phi;
+            analysis->area_storage[i/analysis->storage_time] = area_total;
+            analysis->area_proj_storage[i/analysis->storage_time] = lengths[0]*lengths[1];
+            analysis->mass_storage[i/storage_time] = mass;
+            analysis->storage_counts++;
         }
         middle = chrono::steady_clock::now();
         time_span_m = middle-begin;
@@ -430,9 +413,8 @@ void MembraneMC::Simulate(int cycles, chrono::steady_clock::time_point& begin) {
         if(i >= cycles) {
             break;
         }
-        // dumpXYZConfig("config.xyz");
     }
-    outputTriangulation("int.off");	
+    output->OutputTriangulation("int.off");	
     steps_tested_prod = steps_tested_displace + steps_tested_tether + steps_tested_mass + steps_tested_protein + steps_tested_area;
     steps_rejected_prod = steps_rejected_displace + steps_tested_tether + steps_rejected_mass + steps_rejected_protein + steps_rejected_area;
     myfile_umb.close();

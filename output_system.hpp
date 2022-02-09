@@ -14,20 +14,16 @@
 #include <iomanip>
 #include <chrono>
 #include "membrane_mc.hpp"
-#include "saruprng.hpp"
 using namespace std;
 
 class OutputSystem {
     public:
-        OutputSystem(MembraneMC*);
+        OutputSystem();
         ~OutputSystem();
-        void OutputTriangulation(string);
-        void OutputTriangulationAppend(string);
-        void OutputTriangulationStorage();
-        void DumpXYZConfig(string);
-
-        // MembraneMC pointer
-        MembraneMC* sys;
+        void OutputTriangulation(MembraneMC&, string);
+        void OutputTriangulationAppend(MembraneMC&, string);
+        void OutputTriangulationStorage(MembraneMC&);
+        void DumpXYZConfig(MembraneMC&,string);
 };
 
 #endif

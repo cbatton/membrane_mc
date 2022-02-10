@@ -27,7 +27,7 @@ int main(int argc, char* argv[]) {
     MPI_Init(&argc, &argv);
     // Generate system and read params
     MembraneMC system(omp_get_max_threads());
-    system.InputParams(argc, argv);
+    system.InputParam(argc, argv);
     // Analyzers
     Analyzers analysis(system.bins, system.storage_time, system.storage_umb_time, system);
     // Generate neighbor lists
@@ -35,8 +35,8 @@ int main(int argc, char* argv[]) {
     nl.GenerateNeighborList(system);
     // Run simulation
     Simulation simulate(system.lambda, system.lambda_scale, system.nl_move_start, omp_get_max_threads());
-    simulate.Equilibriate(system.cycles_eq, system, begin);
-    simulate.Simulate(system.cycles_prod, system, analysis, begin);
+    simulate.Equilibriate(system.cycles_eq, system, nl, begin);
+    simulate.Simulate(system.cycles_prod, system, nl, analysis, begin);
     analysis.OutputAnalyzers();
     system.OutputTimes();
     // Finalize the MPI environment

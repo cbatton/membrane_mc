@@ -116,7 +116,7 @@ void OutputSystem::OutputTriangulationStorage(MembraneMC& sys) {
 
 }
 
-void OutputSystem::DumpXYZConfig(MembraneMC&, string name) {
+void OutputSystem::DumpXYZConfig(MembraneMC& sys, string name) {
     // Commands to speed things up
     // turns off synchronization of C++ streams
     ios_base::sync_with_stdio(false);
@@ -131,7 +131,7 @@ void OutputSystem::DumpXYZConfig(MembraneMC&, string name) {
     myfile << "Properties=species:S:3:pos:R:3 ";
     myfile << "Time=" << sys.count_step << "\n";
     for(int i=0; i < sys.vertices; i++) {
-        myfile << " " << sys.ising_array[i] << " " << std::scientific << sys.lengths[0]*Radius_x_tri[i] << " " << std::scientific << sys.lengths[1]*Radius_y_tri[i] << " " << std::scientific << Radius_z_tri[i] << "\n";
+        myfile << " " << sys.ising_array[i] << " " << std::scientific << sys.lengths[0]*sys.radii_tri[i][0] << " " << std::scientific << sys.lengths[1]*sys.radii_tri[i][1] << " " << std::scientific << sys.radii_tri[i][2] << "\n";
     }
     myfile.close();
 }

@@ -12,6 +12,7 @@
 #include <chrono>
 #include "membrane_mc.hpp"
 #include "analyzers.hpp"
+#include "utilities.hpp"
 #include "saruprng.hpp"
 using namespace std;
 
@@ -252,7 +253,7 @@ void Analyzers::ClusterDFS(MembraneMC& sys, int vertex_ind, int cluster_ind, clu
     for(int i=0; i<sys.point_neighbor_list[vertex_ind].size(); i++) {
         int neighbor = sys.point_neighbor_list[vertex_ind][i];
         if(cluster_cur.vertex_status[neighbor] == -1) {
-            if(sys->ising_array[neighbor] != 0) {
+            if(sys.ising_array[neighbor] != 0) {
                 ClusterDFS(sys, neighbor, cluster_ind, cluster_cur);
             }
         }
@@ -321,13 +322,14 @@ void Analyzers::ClusterPostAnalysis() {
 
 void Analyzers::RDFRoutine(MembraneMC& sys, int ind, int spec_0, int spec_1, int spec_2, int spec_3) {
     // routine to sample rho
+    Utilities util;
     #pragma omp parallel for schedule(dynamic,32)
     for(int i=0; i<sys.vertices; i++) {
         if((sys.ising_array[i] == spec_0) || (sys.ising_array[i] == spec_1)) {
             for(int j=0; j<sys.vertices; j++) {
                 if(i != j) {
                     if((sys.ising_array[j] == spec_2) || (sys.ising_array[j] == spec_3)) {
-                        double distance = sys.sim_util->LengthLink(i,j);
+                        double distance = util.LengthLink(sys,i,j);
                         int bin_loc = int(distance/bin_size);
                         if((distance<sys.lengths[0]*0.5) && (bin_loc < bins)) {
                             #pragma omp atomic

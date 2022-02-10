@@ -25,7 +25,7 @@ Utilities::~Utilities() {
     // Does nothing
 }
 
-void Utilities::LinkMaxMin(Membrane& sys, NeighborList& nl) {
+void Utilities::LinkMaxMin(MembraneMC& sys, NeighborList& nl) {
     // Find the shortest and longest link
     // Use sys.point_neighbor_list to do the max side
     // Use neighbor lists to do the min side
@@ -62,7 +62,7 @@ void Utilities::LinkMaxMin(Membrane& sys, NeighborList& nl) {
 	sys.my_cout << "Max is " << max << "\n";
 }
 
-void Utilities::EnergyNode(Membrane& sys, int i) {
+void Utilities::EnergyNode(MembraneMC& sys, int i) {
     // Compute energy about a node
 	sys.phi_vertex[i] = 0;
     double link_length[sys.point_neighbor_list[i].size()];
@@ -77,7 +77,7 @@ void Utilities::EnergyNode(Membrane& sys, int i) {
         int k = sys.point_neighbor_list[i][j];
         link_length[j] = LengthLink(sys,i,k);
         if ((link_length[j] > 1.673) || (link_length[j] < 1.00)) {
-            phi_vertex[i] = pow(10,100);
+            sys.phi_vertex[i] = pow(10,100);
             return;    
         }
     }
@@ -85,20 +85,20 @@ void Utilities::EnergyNode(Membrane& sys, int i) {
     for(int j_1=0; j_1<sys.point_neighbor_list[i].size(); j_1++) {
         int face_1 = sys.point_neighbor_triangle[i][j_1][0];
         int face_2 = sys.point_neighbor_triangle[i][j_1][1];
-        if((sys.triangle_list[face_1][0] != i) && (sys.triangle_list[face_1][0] != point_neighbor_list[i][j_1])) {
+        if((sys.triangle_list[face_1][0] != i) && (sys.triangle_list[face_1][0] != sys.point_neighbor_list[i][j_1])) {
             opposite[j_1][0] = sys.triangle_list[face_1][0];
         }
-        else if((sys.triangle_list[face_1][1] != i) && (sys.triangle_list[face_1][1] != point_neighbor_list[i][j_1])) {
+        else if((sys.triangle_list[face_1][1] != i) && (sys.triangle_list[face_1][1] != sys.point_neighbor_list[i][j_1])) {
             opposite[j_1][0] = sys.triangle_list[face_1][1];
         }
         else {
             opposite[j_1][0] = sys.triangle_list[face_1][2];
         }
 
-        if((sys.triangle_list[face_2][0] != i) && (sys.triangle_list[face_2][0] != point_neighbor_list[i][j_1])) {
+        if((sys.triangle_list[face_2][0] != i) && (sys.triangle_list[face_2][0] != sys.point_neighbor_list[i][j_1])) {
             opposite[j_1][1] = sys.triangle_list[face_2][0];
         }
-        else if((sys.triangle_list[face_2][1] != i) && (sys.triangle_list[face_2][1] != point_neighbor_list[i][j_1])) {
+        else if((sys.triangle_list[face_2][1] != i) && (sys.triangle_list[face_2][1] != sys.point_neighbor_list[i][j_1])) {
             opposite[j_1][1] = sys.triangle_list[face_2][1];
         }
         else {
@@ -130,7 +130,7 @@ void Utilities::EnergyNode(Membrane& sys, int i) {
     }
     for(int j=0; j<sys.point_triangle_list[i].size(); j++) {
         double triangle_normal[3] = {0,0,0};
-        NormalTriangle(sys.point_triangle_list[i][j], triangle_normal);
+        NormalTriangle(sys, sys.point_triangle_list[i][j], triangle_normal);
         vertex_normal[0] += sys.area_faces[sys.point_triangle_list[i][j]]/vertex_area*triangle_normal[0];
         vertex_normal[1] += sys.area_faces[sys.point_triangle_list[i][j]]/vertex_area*triangle_normal[1];
         vertex_normal[2] += sys.area_faces[sys.point_triangle_list[i][j]]/vertex_area*triangle_normal[2];
@@ -152,51 +152,60 @@ void Utilities::InitializeEnergy(MembraneMC& sys, NeighborList& nl) {
     sys.area_total = 0;
     // Loop through neighbor list to see if any hard sphere constraints are violated
 	// Check to make sure not counting self case
-    #pragma omp parallel for reduction(+:sys.phi)
+    double phi = 0.0;
+    #pragma omp parallel for reduction(+:phi)
     for(int k=0; k<sys.vertices; k++) {
         int index = nl.neighbor_list_index[k];
         for(int i=0; i<nl.neighbors[index].size(); i++) {
             for(int j=0; j<nl.neighbor_list[nl.neighbors[index][i]].size(); j++) {
                 // Check particle interactions
-                if(k != nl.neighbor_list[neighbors[index][i]][j]) {
+                if(k != nl.neighbor_list[nl.neighbors[index][i]][j]) {
                     double length_neighbor = LengthLink(sys, k,nl.neighbor_list[nl.neighbors[index][i]][j]);
                     if(length_neighbor < 1.0) {
-                        sys.phi += pow(10,100);
+                        phi += pow(10,100);
                     }
                 }
             }
         }
     }
+    sys.phi = phi;
     // Compute surface area
-    #pragma omp parallel for reduction(+:sys.area_total)
+    double area_total = 0.0;
+    #pragma omp parallel for reduction(+:area_total)
     for(int i=0; i<sys.faces; i++) {
-        AreaNode(i);
+        AreaNode(sys,i);
         sys.area_faces_original[i] = sys.area_faces[i];
-        sys.area_total += sys.area_faces[i];
+        area_total += sys.area_faces[i];
     }
+    sys.area_total = area_total;
     sys.phi -= sys.tau_frame*sys.lengths[0]*sys.lengths[1];
 
     sys.phi_bending = 0;
-    #pragma omp parallel for reduction(+:sys.phi_bending,sys.phi)
+    double phi_bending = 0.0;
+    double phi_st = 0.0;
+    #pragma omp parallel for reduction(+:phi_bending,phi_st)
     for(int i=0; i<sys.vertices; i++) {
         EnergyNode(sys, i); 
         sys.phi_vertex_original[i] = sys.phi_vertex[i];
         sys.mean_curvature_vertex_original[i] = sys.mean_curvature_vertex[i];
         sys.sigma_vertex_original[i] = sys.sigma_vertex[i];
-        sys.phi += gamma_surf[sys.ising_array[i]]*sys.sigma_vertex[i];
-        sys.phi_bending += phi_vertex[i];
+        phi_st += sys.gamma_surf[sys.ising_array[i]]*sys.sigma_vertex[i];
+        phi_bending += sys.phi_vertex[i];
     }
-    sys.phi += sys.phi_bending;
+    sys.phi_bending = phi_bending;
+    sys.phi += sys.phi_bending+phi_st;
 
     // Evaluate Ising model energy
     sys.mass = 0;
     sys.magnet = 0;
 
-    #pragma omp parallel for reduction(+:sys.mass,sys.magnet)
+    int mass = 0;
+    double magnet = 0;
+    #pragma omp parallel for reduction(+:mass,magnet)
     for(int i=0; i<sys.vertices; i++) {
         if(sys.ising_array[i] < 2) {
-            sys.mass += sys.ising_array[i];
-            sys.magnet += sys.ising_values[sys.ising_array[i]];
+            mass += sys.ising_array[i];
+            magnet += sys.ising_values[sys.ising_array[i]];
         }
     }
     sys.phi -= sys.h_external*sys.magnet;   
@@ -212,26 +221,28 @@ void Utilities::InitializeEnergy(MembraneMC& sys, NeighborList& nl) {
     sys.phi_phi = 0.5*phi_magnet;
 }
 
-void Utilities::InitializeEnergyScale(MembraneMC&, NeighborList& nl) {
+void Utilities::InitializeEnergyScale(MembraneMC& sys, NeighborList& nl) {
     sys.phi = 0;
     sys.area_total = 0;
     // Loop through neighbor list to see if any hard sphere constraints are violated
 	// Check to make sure not counting self case
-    #pragma omp parallel for reduction(+:sys.phi)
+    double phi = 0.0;
+    #pragma omp parallel for reduction(+:phi)
     for(int k=0; k<sys.vertices; k++) {
         int index = nl.neighbor_list_index[k];
         for(int i=0; i<nl.neighbors[index].size(); i++) {
             for(int j=0; j<nl.neighbor_list[nl.neighbors[index][i]].size(); j++) {
                 // Check particle interactions
-                if(k != nl.neighbor_list[neighbors[index][i]][j]) {
+                if(k != nl.neighbor_list[nl.neighbors[index][i]][j]) {
                     double length_neighbor = LengthLink(sys,k,nl.neighbor_list[nl.neighbors[index][i]][j]);
                     if(length_neighbor < 1.0) {
-                        sys.phi += pow(10,100);
+                        phi += pow(10,100);
                     }
                 }
             }
         }
     }
+    sys.phi = phi;
     // If condition violated, Phi > 10^100 so we can just return
     if(sys.phi > pow(10,10)) {
         return;
@@ -242,10 +253,12 @@ void Utilities::InitializeEnergyScale(MembraneMC&, NeighborList& nl) {
         AreaNode(sys, i);
     }
 
-    #pragma omp parallel for reduction(+:sys.area_total)
-    for(int i=0; i<faces; i++) {
-        sys.area_total += sys.area_faces[i];
+    double area_total = 0.0;
+    #pragma omp parallel for reduction(+:area_total)
+    for(int i=0; i<sys.faces; i++) {
+        area_total += sys.area_faces[i];
     }
+    sys.area_total = area_total;
     sys.phi -= sys.tau_frame*sys.lengths[0]*sys.lengths[1];
 
     #pragma omp parallel for
@@ -255,12 +268,15 @@ void Utilities::InitializeEnergyScale(MembraneMC&, NeighborList& nl) {
 
     // Idea is to seperate energy evaluation and adding Phi to allow for sweet vectorization
     sys.phi_bending = 0.0;
-    #pragma omp parallel for reduction(+:sys.phi_bending,sys.phi)
+    double phi_bending = 0.0;
+    double phi_st = 0.0;
+    #pragma omp parallel for reduction(+:phi_bending,phi_st)
     for(int i=0; i<sys.vertices; i++) {
-        sys.phi_bending += phi_vertex[i];
-        sys.phi += gamma_surf[sys.ising_array[i]]*sys.sigma_vertex[i];
+        phi_bending += sys.phi_vertex[i];
+        phi_st += sys.gamma_surf[sys.ising_array[i]]*sys.sigma_vertex[i];
     }
-    sys.phi += sys.phi_bending;
+    sys.phi_bending = phi_bending;
+    sys.phi += sys.phi_bending+phi_st;
 
     // Evaluate Ising model energy
     sys.phi -= sys.h_external*sys.magnet;   
@@ -304,7 +320,7 @@ void Utilities::AreaNode(MembraneMC& sys, int i) {
     double bd_3 = sys.radii_tri[dummy_1][2] - sys.radii_tri[dummy_3][2];
 
     // Area is equal to 1/2*magnitude(AB cross AC)
-    area_faces[i] = 0.5*pow(pow(ac_2*bd_3-ac_3*bd_2,2.0)+pow(-ac_1*bd_3+ac_3*bd_1,2.0)+pow(ac_1*bd_2-ac_2*bd_1,2.0) , 0.5);
+    sys.area_faces[i] = 0.5*pow(pow(ac_2*bd_3-ac_3*bd_2,2.0)+pow(-ac_1*bd_3+ac_3*bd_1,2.0)+pow(ac_1*bd_2-ac_2*bd_1,2.0) , 0.5);
 }
 
 void Utilities::NormalTriangle(MembraneMC& sys, int i, double normal[3]) {

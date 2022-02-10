@@ -22,9 +22,15 @@
 #include "utilities.hpp"
 using namespace std;
 
-MembraneMC::MembraneMC() {
+MembraneMC::MembraneMC(int max_threads) {
     // Constructor
-    // Does nothing
+    // Initialize vector sizes
+    phi_diff_thread.resize(max_threads,vector<double>(8,0));
+    phi_phi_diff_thread.resize(max_threads,vector<double>(8,0));
+    phi_bending_diff_thread.resize(max_threads,vector<double>(8,0));
+    area_diff_thread.resize(max_threads,vector<double>(8,0));
+    mass_diff_thread.resize(max_threads,vector<int>(8,0));
+    magnet_diff_thread.resize(max_threads,vector<double>(8,0));
 }
 
 MembraneMC::~MembraneMC() {

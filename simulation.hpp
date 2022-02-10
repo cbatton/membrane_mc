@@ -24,19 +24,6 @@ class Simulation {
         void CheckerboardMCSweep(bool);
         void NextStepSerial();
         void NextStepParallel(bool);
-
-        // openmp stuff
-        constexpr static int max_threads = 272;
-        int active_threads = 0;
-        double phi_diff_thread[max_threads][8];
-        double phi_phi_diff_thread[max_threads][8];
-        double phi_bending_diff_thread[max_threads][8];
-        double area_diff_thread[max_threads][8];
-        int mass_diff_thread[max_threads][8];
-        double magnet_diff_thread[max_threads][8];
-
-        // MembraneMC pointer
-        MembraneMC* sys;
 };
 
 #endif

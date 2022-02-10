@@ -21,7 +21,7 @@ class MembraneMC {
     public:
         // This class contains all the major generic functions I am going to call
         // Functions
-        MembraneMC();
+        MembraneMC(int);
         ~MembraneMC();
         void InputParam(int&, char**);
         void Equilibriate(int, chrono::steady_clock::time_point&);
@@ -123,6 +123,13 @@ class MembraneMC {
         ofstream my_cout;
         // OpenMP
         int active_threads = 1;
+        int max_threads = 272;
+        vector<vector<double>> phi_diff_thread;
+        vector<vector<double>> phi_phi_diff_thread;
+        vector<vector<double>> phi_bending_diff_thread;
+        vector<vector<double>> area_diff_thread;
+        vector<vector<int>> mass_diff_thread;
+        vector<vector<double>> magnet_diff_thread;
 };
 
 #endif

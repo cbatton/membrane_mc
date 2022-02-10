@@ -26,6 +26,32 @@ InitSystem::~InitSystem() {
     // Does nothing
 }
 
+void InitSystem::Initialize(MembraneMC& sys) {
+        // Use initializer to handle system initialization
+        Utilities util;
+        util.SaruSeed(sys,sys.count_step);
+        InitializeEquilState(sys);
+        GenerateTriangulationEquil(sys);
+        UseTriangulation(sys,"out.off");
+        // now place proteins
+        #pragma omp parallel for
+        for(int i=0; i<sys.vertices; i++) {
+            sys.protein_node[i] = -1;
+        }
+        // Place proteins at random
+        for(int i=0; i<sys.num_proteins; i++) {
+            bool check_nodes = true;
+            while(check_nodes) {
+                int j = sys.generator.rand_select(sys.vertices-1);
+                if(sys.ising_array[j] != 2) {
+                    check_nodes = false;
+                    sys.ising_array[j] = 2;
+                    sys.protein_node[j] = 0;
+                }
+            }
+        }
+}
+
 void InitSystem::InitializeEquilState(MembraneMC& sys) {
     // Create two layers of points that will triangulate to form a mesh of equilateral triangle
     // Layer one

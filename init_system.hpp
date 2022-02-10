@@ -21,6 +21,7 @@ class InitSystem {
     public:
         InitSystem();
         ~InitSystem();
+        void Initialize(MembraneMC&);
         void InitializeEquilState(MembraneMC&);
         void GenerateTriangulationEquil(MembraneMC&);
         inline int LinkTriangleTest(MembraneMC&, int, int);

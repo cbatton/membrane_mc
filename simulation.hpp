@@ -14,16 +14,19 @@
 #include <iomanip>
 #include <chrono>
 #include "membrane_mc.hpp"
+#include "analyzers.hpp"
 #include "saruprng.hpp"
 using namespace std;
 
 class Simulation {
     public:
-        Simulation(MembraneMC*);
+        Simulation();
         ~Simulation();
         void CheckerboardMCSweep(bool);
         void NextStepSerial();
         void NextStepParallel(bool);
+        void Equilibriate(int, MembraneMC&, chrono::steady_clock::time_point&);
+        void Simulate(int, MembraneMC&, Analyzers&, chrono::steady_clock::time_point&);
 };
 
 #endif

@@ -20,11 +20,7 @@ Analyzers::Analyzers() {
     // Should need to do nothing here
 }
 
-Analyzers::Analyzers(int bins_, int storage_time_, int storage_umb_time_, MembraneMC& sys) {
-    // Constructor
-    bins = bins_;
-    storage_time = storage_time_;
-    storage_umb_time = storage_umb_time_;
+Analyzers::Analyzers(int bins, int storage_time, int storage_umb_time, MembraneMC& sys) : bins(bins), storage_time(storage_time), storage_umb_time(storage_umb_time) {
     // Adjust size of storage variables
     int storage = sys.cycles_prod/storage_time;
     energy_storage.resize(storage,0.0);
@@ -442,4 +438,8 @@ void Analyzers::RhoAnalyzer(MembraneMC& sys) {
     myfile.precision(10);
     myfile.open(output_path+"/rho_protein_mass.txt", std::ios_base::app);
     myfile << std::scientific << mass_sample[0] << " " << std::scientific << mass_sample[1] << " " << std::scientific << mass_sample[2] << endl;
+}
+
+void Analyzers::OutputAnalyzers() {
+    // Output analyzers
 }

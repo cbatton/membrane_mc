@@ -38,6 +38,7 @@ class Analyzers {
         void RDFRoutine(MembraneMC&, int, int, int, int, int);
         void RhoSample(MembraneMC&);
         void RhoAnalyzer(MembraneMC&);
+        void OutputAnalyzers();
 
         // Storage variables
         int storage_time = 10;

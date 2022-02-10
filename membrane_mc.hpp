@@ -24,10 +24,8 @@ class MembraneMC {
         MembraneMC(int);
         ~MembraneMC();
         void InputParam(int&, char**);
-        void Equilibriate(int, chrono::steady_clock::time_point&);
-        void Simulate(int, chrono::steady_clock::time_point&);
         void OutputTimes();
-        void OutputAnalyzers();
+
         // Variables
         // Initial mesh is points distributed in rectangular grid
         int dim_x = 200; // Nodes in x direction
@@ -91,6 +89,10 @@ class MembraneMC {
         double num_frac = 0.5; // Number fraction of types
         double temp = 2.0; // Temperature
         double temp_list[2] = {2.0, 2.0};
+        // MC variables to pass
+        double lambda = 0.01;
+        double lambda_scale = 0.001;
+        int nl_move_start = 0;
 
         // Protein variables
         vector<int> protein_node;
@@ -123,7 +125,6 @@ class MembraneMC {
         ofstream my_cout;
         // OpenMP
         int active_threads = 1;
-        int max_threads = 272;
         vector<vector<double>> phi_diff_thread;
         vector<vector<double>> phi_phi_diff_thread;
         vector<vector<double>> phi_bending_diff_thread;

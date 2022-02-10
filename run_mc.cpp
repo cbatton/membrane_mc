@@ -19,6 +19,11 @@ int main(int argc, char* argv[]) {
     // Should build in restarting somehow..
     MPI_Init(&argc, &argv);
     MembraneMC system;
+    // Now Initialize utility classes
+    analysis = make_shared<Analyzers>(this, bins, storage_time, storage_umb_time);
+    // Generate neighbor lists
+    nl->GenerateNeighborList();
+    nl->GenerateCheckerboard();
     system.InputParams(argc, argv);
     system.Equilibriate(system.cycles_equil);
     system.Simulate(system.cycles);

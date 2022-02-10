@@ -13,9 +13,13 @@
 #include "membrane_mc.hpp"
 #include "saruprng.hpp"
 #include "simulation.hpp"
+#include "analyzers.hpp"
+#include "output_system.hpp"
+#include "mc_moves.hpp"
+#include "utilities.hpp"
 using namespace std;
 
-Simulation::Simulation() {
+Simulation::Simulation(double lambda, double lambda_scale, int nl_move_start, int max_threads) : mc_mover(lambda, lambda_scale, nl_move_start, max_threads) {
     // Constructor
     // Does nothing
 }
@@ -234,7 +238,7 @@ void Simulation::NextStepParallel(bool nl_move) {
     }
 }
 
-void Simulation::Equilibriate(int cycles, MembraneMC& sys, chrono::steady_clock::time_point& begin) {
+void Simulation::Equilibriate(int cycles, MembraneMC& sys, NeighborList& nl, chrono::steady_clock::time_point& begin) {
     // Simulate for number of steps, or time limit
     chrono::steady_clock::time_point t1_other;
     chrono::steady_clock::time_point t2_other;
@@ -244,66 +248,66 @@ void Simulation::Equilibriate(int cycles, MembraneMC& sys, chrono::steady_clock:
     double spon_curv_step = 4*spon_curv_end/cycles;
     int i=0;
     while(time_span_m.count() < final_warning) {
-        initializer->SaruSeed(count_step);
-        count_step++;
-        if(mc_mover->nl_move_start == 0) {
-            sim->NextStepParallel(false);
+        util.SaruSeed(sys,sys.count_step);
+        sys.count_step++;
+        if(mc_mover.nl_move_start == 0) {
+            NextStepParallel(false, sys, nl);
         }
         else {
-            sim->NextStepParallel(true);
+            NextStepParallel(true, sys, nl);
         }
         if(i < cycles/4) {
-            spon_curv[2] += spon_curv_step;
-            util->InitializeEnergy();
+            sys.spon_curv[2] += spon_curv_step;
+            util.InitializeEnergy(sys, nl);
         }
         else if(i == cycles/4){
             spon_curv[2] = spon_curv_end;
         }
 		if(i%1000==0) {
             t1_other = chrono::steady_clock::now();
-            double phi_ = phi;
-            double phi_bending_ = phi_bending;
-            double phi_phi_ = phi_phi;
-            util->InitializeEnergy();
-			my_cout << "cycle " << i << endl;
-			my_cout << "energy " << std::scientific << phi << " " << std::scientific << phi-phi_ << endl;
-            my_cout << "phi_bending " << std::scientific << phi_bending << " " << std::scientific << phi_bending-phi_bending_ << " phi_phi " << std::scientific << phi_phi << " " << std::scientific << phi_phi-phi_phi_ << endl;
-            my_cout << "mass " << mass << endl;
-            my_cout << "area " << area_total << " and " << lengths[0]*lengths[1] << endl;
-            my_cout << "spon_curv " << spon_curv[2] << endl;
+            double phi_ = sys.phi;
+            double phi_bending_ = sys.phi_bending;
+            double phi_phi_ = sys.phi_phi;
+            util.InitializeEnergy(sys, nl);
+			sys.my_cout << "cycle " << i << endl;
+			sys.my_cout << "energy " << std::scientific << sys.phi << " " << std::scientific << sys.phi-phi_ << endl;
+            sys.my_cout << "phi_bending " << std::scientific << sys.phi_bending << " " << std::scientific << sys.phi_bending-phi_bending_ << " phi_phi " << std::scientific << sys.phi_phi << " " << std::scientific << sys.phi_phi-phi_phi_ << endl;
+            sys.my_cout << "mass " << sys.mass << endl;
+            sys.my_cout << "area " << sys.area_total << " and " << sys.lengths[0]*sys.lengths[1] << endl;
+            sys.my_cout << "spon_curv " << sys.spon_curv[2] << endl;
             t2_other = chrono::steady_clock::now();
             chrono::duration<double> time_span = t2_other-t1_other;
-            time_storage_other[0] += time_span.count();
+            sys.time_storage_other[0] += time_span.count();
 
             t1_other = chrono::steady_clock::now();
-			util->LinkMaxMin();
+			util.LinkMaxMin(sys, nl);
             t2_other = chrono::steady_clock::now();
             time_span = t2_other-t1_other;
-            time_storage_other[1] += time_span.count();
+            sys.time_storage_other[1] += time_span.count();
 
             t1_other = chrono::steady_clock::now();
-            my_cout << "displace " << mc_mover->steps_rejected_displace << "/" << mc_mover->steps_tested_displace << endl;
-            my_cout << "tether " << mc_mover->steps_rejected_tether << "/" << mc_mover->steps_tested_tether << endl;
-            my_cout << "mass " << mc_mover->steps_rejected_mass << "/" << mc_mover->steps_tested_mass << endl;
-            my_cout << "protein " << mc_mover->steps_rejected_protein << "/" << mc_mover->steps_tested_protein << endl;
-            my_cout << "area " << mc_mover->steps_rejected_area << "/" << mc_mover->steps_tested_area << endl;
+            sys.my_cout << "displace " << mc_mover.steps_rejected_displace << "/" << mc_mover.steps_tested_displace << endl;
+            sys.my_cout << "tether " << mc_mover.steps_rejected_tether << "/" << mc_mover.steps_tested_tether << endl;
+            sys.my_cout << "mass " << mc_mover.steps_rejected_mass << "/" << mc_mover.steps_tested_mass << endl;
+            sys.my_cout << "protein " << mc_mover.steps_rejected_protein << "/" << mc_mover.steps_tested_protein << endl;
+            sys.my_cout << "area " << mc_mover.steps_rejected_area << "/" << mc_mover.steps_tested_area << endl;
             t2_other = chrono::steady_clock::now();
             time_span = t2_other-t1_other;
-            time_storage_other[2] += time_span.count();
+            sys.time_storage_other[2] += time_span.count();
 		}
 		if(i%1000==0) {
             t1_other = chrono::steady_clock::now();
-			output_util->OutputTriangulation("int.off");	
+			output.OutputTriangulation(sys, "int.off");	
             if(i%40000==0) {
-                output_util->OutputTriangulation("int_2.off");	
+                output.OutputTriangulation(sys, "int_2.off");	
             }
             if(i%4000==0) {
-			    output_util->DumpXYZConfig("config_equil.xyz");
-			    output_util->OutputTriangulationAppend("equil.off");	
+			    output.DumpXYZConfig(sys, "config_equil.xyz");
+			    output.OutputTriangulationAppend(sys, "equil.off");	
             }
             t2_other = chrono::steady_clock::now();
             chrono::duration<double> time_span = t2_other-t1_other;
-            time_storage_other[3] += time_span.count();
+            sys.time_storage_other[3] += time_span.count();
 		}
         middle = chrono::steady_clock::now();
         time_span_m = middle-begin;
@@ -312,93 +316,92 @@ void Simulation::Equilibriate(int cycles, MembraneMC& sys, chrono::steady_clock:
             break;
         }
     }
-    output_util->OutputTriangulation("int.off");	
-    mc_mover->steps_tested_eq = mc_mover->steps_tested_displace + mc_mover->steps_tested_tether + mc_mover->steps_tested_mass + mc_mover->steps_tested_protein + mc_mover->steps_tested_area;
-    mc_mover->steps_rejected_eq = mc_mover->steps_rejected_displace + mc_mover->steps_tested_tether + mc_mover->steps_rejected_mass + mc_mover->steps_rejected_protein + mc_mover->steps_rejected_area;
+    output.OutputTriangulation(sys, "int.off");	
+    mc_mover.steps_tested_eq = mc_mover.steps_tested_displace + mc_mover.steps_tested_tether + mc_mover.steps_tested_mass + mc_mover.steps_tested_protein + mc_mover.steps_tested_area;
+    mc_mover.steps_rejected_eq = mc_mover.steps_rejected_displace + mc_mover.steps_tested_tether + mc_mover.steps_rejected_mass + mc_mover.steps_rejected_protein + mc_mover.steps_rejected_area;
 }
 
-void Simulation::Simulate(int cycles, MembraneMC& sys, Analyzers& analyzer, chrono::steady_clock::time_point& begin) {
+void Simulation::Simulate(int cycles, MembraneMC& sys, NeighborList& nl, Analyzers& analyzer, chrono::steady_clock::time_point& begin) {
     // Simulate for number of cycles, or time limit
     chrono::steady_clock::time_point t1_other;
     chrono::steady_clock::time_point t2_other;
     chrono::steady_clock::time_point middle;
-    mc_mover->steps_tested_displace = 0;
-    mc_mover->steps_rejected_displace = 0;
-    mc_mover->steps_tested_tether = 0;
-    mc_mover->steps_rejected_tether = 0;
-    mc_mover->steps_tested_mass = 0;
-    mc_mover->steps_rejected_mass = 0;
-    mc_mover->steps_tested_protein = 0;
-    mc_mover->steps_rejected_protein = 0;
-    mc_mover->steps_tested_area = 0;
-    mc_mover->steps_rejected_area = 0;
+    mc_mover.steps_tested_displace = 0;
+    mc_mover.steps_rejected_displace = 0;
+    mc_mover.steps_tested_tether = 0;
+    mc_mover.steps_rejected_tether = 0;
+    mc_mover.steps_tested_mass = 0;
+    mc_mover.steps_rejected_mass = 0;
+    mc_mover.steps_tested_protein = 0;
+    mc_mover.steps_rejected_protein = 0;
+    mc_mover.steps_tested_area = 0;
+    mc_mover.steps_rejected_area = 0;
     ofstream myfile_umb;
     myfile_umb.precision(17);
-    myfile_umb.open(output_path+"/mbar_data.txt", std::ios_base::app);
-    my_cout.precision(8);
+    myfile_umb.open(sys.output_path+"/mbar_data.txt", std::ios_base::app);
+    sys.my_cout.precision(8);
     middle = chrono::steady_clock::now();
     chrono::duration<double> time_span_m = middle-begin;
     int i = 0;
     while(time_span_m.count() < final_warning) {
-        initializer->SaruSeed(count_step);
-        count_step++;
-	    sim->NextStepParallel(true);
+        util.SaruSeed(sys,sys.count_step);
+        sys.count_step++;
+	    NextStepParallel(true, sys, nl);
 		if(i%1000==0) {
             t1_other = chrono::steady_clock::now();
             double phi_ = phi;
             double phi_bending_ = phi_bending;
             double phi_phi_ = phi_phi;
             util->InitializeEnergy();
-			my_cout << "cycle " << i << endl;
-			my_cout << "energy " << std::scientific << phi << " " << std::scientific << phi-phi_ << endl;
-            my_cout << "phi_bending " << std::scientific << phi_bending << " " << std::scientific << phi_bending-phi_bending_ << " phi_phi " << std::scientific << phi_phi << " " << std::scientific << phi_phi-phi_phi_ << endl;
-            my_cout << "mass " << mass << endl;
-            my_cout << "area " << area_total << " and " << lengths[0]*lengths[1] << endl;
+			sys.my_cout << "cycle " << i << endl;
+			sys.my_cout << "energy " << std::scientific << sys.phi << " " << std::scientific << sys.phi-phi_ << endl;
+            sys.my_cout << "phi_bending " << std::scientific << sys.phi_bending << " " << std::scientific << sys.phi_bending-phi_bending_ << " phi_phi " << std::scientific << sys.phi_phi << " " << std::scientific << sys.phi_phi-phi_phi_ << endl;
+            sys.my_cout << "mass " << sys.mass << endl;
+            sys.my_cout << "area " << sys.area_total << " and " << sys.lengths[0]*sys.lengths[1] << endl;
             t2_other = chrono::steady_clock::now();
             chrono::duration<double> time_span = t2_other-t1_other;
-            time_storage_other[0] += time_span.count();
+            sys.time_storage_other[0] += time_span.count();
 
             t1_other = chrono::steady_clock::now();
-			util->LinkMaxMin();
+			util.LinkMaxMin(sys, nl);
             t2_other = chrono::steady_clock::now();
             time_span = t2_other-t1_other;
-            time_storage_other[1] += time_span.count();
+            sys.time_storage_other[1] += time_span.count();
 
             t1_other = chrono::steady_clock::now();
-            my_cout << "displace " << mc_mover->steps_rejected_displace << "/" << mc_mover->steps_tested_displace << endl;
-            my_cout << "tether " << mc_mover->steps_rejected_tether << "/" << mc_mover->steps_tested_tether << endl;
-            my_cout << "mass " << mc_mover->steps_rejected_mass << "/" << mc_mover->steps_tested_mass << endl;
-            my_cout << "protein " << mc_mover->steps_rejected_protein << "/" << mc_mover->steps_tested_protein << endl;
-            my_cout << "area " << mc_mover->steps_rejected_area << "/" << mc_mover->steps_tested_area << endl;
+            sys.my_cout << "displace " << mc_mover.steps_rejected_displace << "/" << mc_mover.steps_tested_displace << endl;
+            sys.my_cout << "tether " << mc_mover.steps_rejected_tether << "/" << mc_mover.steps_tested_tether << endl;
+            sys.my_cout << "mass " << mc_mover.steps_rejected_mass << "/" << mc_mover.steps_tested_mass << endl;
+            sys.my_cout << "protein " << mc_mover.steps_rejected_protein << "/" << mc_mover.steps_tested_protein << endl;
+            sys.my_cout << "area " << mc_mover.steps_rejected_area << "/" << mc_mover.steps_tested_area << endl;
             t2_other = chrono::steady_clock::now();
             time_span = t2_other-t1_other;
-            time_storage_other[2] += time_span.count();
+            sys.time_storage_other[2] += time_span.count();
 		}
 		if(i%1000==0) {
             t1_other = chrono::steady_clock::now();
-			output_util->OutputTriangulation("int.off");	
-            if(count_step%20000==0) {
-                output_util->OutputTriangulation("int_2.off");	
+			output.OutputTriangulation(sys,"int.off");	
+            if(sys.count_step%20000==0) {
+                output.OutputTriangulation(sys,"int_2.off");	
             }
             if(i%4000==0) {
-			    output_util->DumpXYZConfig("config.xyz");
-			    output_util->OutputTriangulationAppend("prod.off");	
+			    output.DumpXYZConfig(sys,"config.xyz");
+			    output.OutputTriangulationAppend(sys,"prod.off");	
             }
             t2_other = chrono::steady_clock::now();
             chrono::duration<double> time_span = t2_other-t1_other;
-            time_storage_other[3] += time_span.count();
+            sys.time_storage_other[3] += time_span.count();
 		}
-        if(i%analysis->storage_umb_time==0) {
-            analysis->energy_storage_umb[i/analysis->storage_umb_time] = phi;
-            analysis->UmbOutput(i/analysis->storage_umb_time, myfile_umb);
-            analysis->umb_counts++;
+        if(i%analyzer.storage_umb_time==0) {
+            analyzer.UmbOutput(sys.phi, sys.phi_bending, sys.phi_phi, sys.lengths, sys.area_total, myfile_umb);
+            analyzer.umb_counts++;
         }
-        if(i%analysis->storage_time==0) {
-		    analysis->energy_storage[i/analysis->storage_time] = phi;
-            analysis->area_storage[i/analysis->storage_time] = area_total;
-            analysis->area_proj_storage[i/analysis->storage_time] = lengths[0]*lengths[1];
-            analysis->mass_storage[i/analysis->storage_time] = mass;
-            analysis->storage_counts++;
+        if(i%analyzer.storage_time==0) {
+		    analyzer.energy_storage[i/analyzer.storage_time] = sys.phi;
+            analyzer.area_storage[i/analyzer.storage_time] = sys.area_total;
+            analyzer.area_proj_storage[i/analyzer.storage_time] = sys.lengths[0]*sys.lengths[1];
+            analyzer.mass_storage[i/analyzer.storage_time] = sys.mass;
+            analyzer.storage_counts++;
         }
         middle = chrono::steady_clock::now();
         time_span_m = middle-begin;
@@ -407,9 +410,9 @@ void Simulation::Simulate(int cycles, MembraneMC& sys, Analyzers& analyzer, chro
             break;
         }
     }
-    output_util->OutputTriangulation("int.off");	
-    mc_mover->steps_tested_prod = mc_mover->steps_tested_displace + mc_mover->steps_tested_tether + mc_mover->steps_tested_mass + mc_mover->steps_tested_protein + mc_mover->steps_tested_area;
-    mc_mover->steps_rejected_prod = mc_mover->steps_rejected_displace + mc_mover->steps_tested_tether + mc_mover->steps_rejected_mass + mc_mover->steps_rejected_protein + mc_mover->steps_rejected_area;
+    output.OutputTriangulation("int.off");	
+    mc_mover.steps_tested_prod = mc_mover.steps_tested_displace + mc_mover.steps_tested_tether + mc_mover.steps_tested_mass + mc_mover.steps_tested_protein + mc_mover.steps_tested_area;
+    mc_mover.steps_rejected_prod = mc_mover.steps_rejected_displace + mc_mover.steps_tested_tether + mc_mover.steps_rejected_mass + mc_mover.steps_rejected_protein + mc_mover.steps_rejected_area;
     myfile_umb.close();
 }
 

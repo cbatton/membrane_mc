@@ -93,6 +93,10 @@ class MembraneMC {
         double lambda = 0.01;
         double lambda_scale = 0.001;
         int nl_move_start = 0;
+        // Analyzer variables to pass
+        int bins = 26;
+        int storage_time = 10;
+        int storage_umb_time = 100;
 
         // Protein variables
         vector<int> protein_node;

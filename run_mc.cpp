@@ -11,24 +11,34 @@
 #include <iomanip>
 #include <chrono>
 #include "membrane_mc.hpp"
+#include "neighborlist.hpp"
+#include "analyzers.hpp"
+#include "init_system.hpp"
+#include "output_system.hpp"
+#include "simulation.hpp"
 #include "saruprng.hpp"
 using namespace std;
 
 int main(int argc, char* argv[]) {
     // Initialize MPI
     // Should build in restarting somehow..
+    // Start the clock
+    chrono::steady_clock::time_point begin = chrono::steady_clock::now();
     MPI_Init(&argc, &argv);
-    MembraneMC system;
-    // Now Initialize utility classes
-    analysis = make_shared<Analyzers>(this, bins, storage_time, storage_umb_time);
-    // Generate neighbor lists
-    nl->GenerateNeighborList();
-    nl->GenerateCheckerboard();
+    // Generate system and read params
+    MembraneMC system(omp_get_max_threads());
     system.InputParams(argc, argv);
-    system.Equilibriate(system.cycles_equil);
-    system.Simulate(system.cycles);
+    // Analyzers
+    Analyzers analysis(system.bins, system.storage_time, system.storage_umb_time, system);
+    // Generate neighbor lists
+    NeighborList nl;
+    nl.GenerateNeighborList(system);
+    // Run simulation
+    Simulation simulate(system.lambda, system.lambda_scale, system.nl_move_start, omp_get_max_threads());
+    simulate.Equilibriate(system.cycles_eq, system, begin);
+    simulate.Simulate(system.cycles_prod, system, analysis, begin);
+    analysis.OutputAnalyzers();
     system.OutputTimes();
-    system.OutputAnalyzers();
     // Finalize the MPI environment
     MPI_Barrier(MPI_COMM_WORLD);
     MPI_Finalize();

@@ -73,10 +73,6 @@ void MembraneMC::InputParam(int& argc, char* argv[]) { // Takes parameters from 
         }
     }
     else{
-        // Temporary variables to pass to constructors
-        int bins = 26;
-        int storage_time = 10;
-        int storage_umb_time = 100;
         // Read in everything
         input >> line >> dim_x >> dim_y;
         getline(input,line);

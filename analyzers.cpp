@@ -400,8 +400,6 @@ void Analyzers::RhoAnalyzer(MembraneMC& sys) {
     }
     area_ave = area_ave/storage_counts;
     area_proj_average = area_ave;
-    cout << "area_proj_average " << area_proj_average << endl;
-    cout << "Length_x*Length_y " << sys.lengths[0]*sys.lengths[1] << endl;
     double rho_ideal[6];
     rho_ideal[0] = mass_sample[2]/(area_proj_average);
     rho_ideal[1] = mass_sample[2]/(area_proj_average);
@@ -429,7 +427,9 @@ void Analyzers::RhoAnalyzer(MembraneMC& sys) {
         ofstream myfile;
         myfile.precision(10);
         myfile.open(output_path+"/rho_protein_"+to_string(k)+".txt", std::ios_base::app);
-        cout << "Bin size " << bin_size << endl;
+        myfile << "area_proj_average " << area_proj_average << endl;
+        myfile << "Length_x*Length_y " << sys.lengths[0]*sys.lengths[1] << endl;
+        myfile << "Bin size " << bin_size << endl;
         for(int i=0; i<bins; i++) {
             myfile << bin_size*(i+0.5) << " " << std::scientific << rho[k][i] << endl;
         }
@@ -442,6 +442,16 @@ void Analyzers::RhoAnalyzer(MembraneMC& sys) {
     myfile << std::scientific << mass_sample[0] << " " << std::scientific << mass_sample[1] << " " << std::scientific << mass_sample[2] << endl;
 }
 
-void Analyzers::OutputAnalyzers() {
+void Analyzers::OutputAnalyzers(MembraneMC& sys) {
     // Output analyzers
+    sys.t1 = chrono::steady_clock::now();
+    EnergyAnalyzer();
+    AreaAnalyzer();
+    AreaProjAnalyzer();
+    MassAnalyzer();
+    ClusterPostAnalysis();
+    RhoAnalyzer(sys);
+    sys.t2 = chrono::steady_clock::now();
+    chrono::duration<double> time_span_anal = sys.t2-sys.t1;
+    sys.time_storage_other[5] += time_span_anal.count();
 }

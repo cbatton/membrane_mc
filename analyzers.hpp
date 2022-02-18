@@ -38,11 +38,11 @@ class Analyzers {
         void RDFRoutine(MembraneMC&, int, int, int, int, int);
         void RhoSample(MembraneMC&);
         void RhoAnalyzer(MembraneMC&);
-        void OutputAnalyzers();
+        void OutputAnalyzers(MembraneMC&);
 
         // Storage variables
-        int storage_time = 10;
-        int storage_umb_time = 100;
+        int storage_time;
+        int storage_umb_time;
         vector<double> energy_storage;
         vector<double> area_storage;
         vector<double> area_proj_storage;
@@ -59,7 +59,7 @@ class Analyzers {
         double area_proj_average;
         int rdf_sample = 0;
         double mass_sample[3] = {0,0,0};
-        int bins = 26;
+        int bins;
         double bin_size = 10;
         vector<vector<double>> rho;
 

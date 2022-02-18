@@ -294,7 +294,7 @@ void Simulation::Equilibriate(int cycles, MembraneMC& sys, NeighborList& nl, chr
         else if(i == cycles/4){
             sys.spon_curv[2] = sys.spon_curv_end;
         }
-		if(i%1000==0) {
+		if(i%sys.dump_cycle==0) {
             t1_other = chrono::steady_clock::now();
             double phi_ = sys.phi;
             double phi_bending_ = sys.phi_bending;
@@ -308,13 +308,13 @@ void Simulation::Equilibriate(int cycles, MembraneMC& sys, NeighborList& nl, chr
             sys.my_cout << "spon_curv " << sys.spon_curv[2] << endl;
             t2_other = chrono::steady_clock::now();
             chrono::duration<double> time_span = t2_other-t1_other;
-            sys.time_storage_other[0] += time_span.count();
+            sys.time_storage_other[1] += time_span.count();
 
             t1_other = chrono::steady_clock::now();
 			util.LinkMaxMin(sys, nl);
             t2_other = chrono::steady_clock::now();
             time_span = t2_other-t1_other;
-            sys.time_storage_other[1] += time_span.count();
+            sys.time_storage_other[2] += time_span.count();
 
             t1_other = chrono::steady_clock::now();
             sys.my_cout << "displace " << mc_mover.steps_rejected_displace << "/" << mc_mover.steps_tested_displace << endl;
@@ -324,21 +324,21 @@ void Simulation::Equilibriate(int cycles, MembraneMC& sys, NeighborList& nl, chr
             sys.my_cout << "area " << mc_mover.steps_rejected_area << "/" << mc_mover.steps_tested_area << endl;
             t2_other = chrono::steady_clock::now();
             time_span = t2_other-t1_other;
-            sys.time_storage_other[2] += time_span.count();
+            sys.time_storage_other[3] += time_span.count();
 		}
-		if(i%1000==0) {
+		if(i%sys.dump_int==0) {
             t1_other = chrono::steady_clock::now();
 			output.OutputTriangulation(sys, "int.off");	
-            if(i%40000==0) {
+            if(i%sys.dump_int_2==0) {
                 output.OutputTriangulation(sys, "int_2.off");	
             }
-            if(i%4000==0) {
+            if(i%sys.dump_config==0) {
 			    output.DumpXYZConfig(sys, "config_equil.xyz");
 			    output.OutputTriangulationAppend(sys, "equil.off");	
             }
             t2_other = chrono::steady_clock::now();
             chrono::duration<double> time_span = t2_other-t1_other;
-            sys.time_storage_other[3] += time_span.count();
+            sys.time_storage_other[4] += time_span.count();
 		}
         middle = chrono::steady_clock::now();
         time_span_m = middle-begin;
@@ -378,7 +378,7 @@ void Simulation::Simulate(int cycles, MembraneMC& sys, NeighborList& nl, Analyze
         util.SaruSeed(sys,sys.count_step);
         sys.count_step++;
 	    NextStepParallel(true, sys, nl);
-		if(i%1000==0) {
+		if(i%sys.dump_cycle==0) {
             t1_other = chrono::steady_clock::now();
             double phi_ = sys.phi;
             double phi_bending_ = sys.phi_bending;
@@ -391,13 +391,13 @@ void Simulation::Simulate(int cycles, MembraneMC& sys, NeighborList& nl, Analyze
             sys.my_cout << "area " << sys.area_total << " and " << sys.lengths[0]*sys.lengths[1] << endl;
             t2_other = chrono::steady_clock::now();
             chrono::duration<double> time_span = t2_other-t1_other;
-            sys.time_storage_other[0] += time_span.count();
+            sys.time_storage_other[1] += time_span.count();
 
             t1_other = chrono::steady_clock::now();
 			util.LinkMaxMin(sys, nl);
             t2_other = chrono::steady_clock::now();
             time_span = t2_other-t1_other;
-            sys.time_storage_other[1] += time_span.count();
+            sys.time_storage_other[2] += time_span.count();
 
             t1_other = chrono::steady_clock::now();
             sys.my_cout << "displace " << mc_mover.steps_rejected_displace << "/" << mc_mover.steps_tested_displace << endl;
@@ -407,21 +407,23 @@ void Simulation::Simulate(int cycles, MembraneMC& sys, NeighborList& nl, Analyze
             sys.my_cout << "area " << mc_mover.steps_rejected_area << "/" << mc_mover.steps_tested_area << endl;
             t2_other = chrono::steady_clock::now();
             time_span = t2_other-t1_other;
-            sys.time_storage_other[2] += time_span.count();
+            sys.time_storage_other[3] += time_span.count();
 		}
-		if(i%1000==0) {
+		if(i%sys.dump_int==0) {
             t1_other = chrono::steady_clock::now();
 			output.OutputTriangulation(sys,"int.off");	
-            if(sys.count_step%20000==0) {
+            if(sys.count_step%sys.dump_int_2==0) {
                 output.OutputTriangulation(sys,"int_2.off");	
             }
-            if(i%4000==0) {
+            if(i%sys.dump_config==0) {
 			    output.DumpXYZConfig(sys,"config.xyz");
 			    output.OutputTriangulationAppend(sys,"prod.off");	
             }
+            analyzer.ClusterAnalysis(sys);
+            analyzer.RhoSample(sys);
             t2_other = chrono::steady_clock::now();
             chrono::duration<double> time_span = t2_other-t1_other;
-            sys.time_storage_other[3] += time_span.count();
+            sys.time_storage_other[4] += time_span.count();
 		}
         if(i%analyzer.storage_umb_time==0) {
             analyzer.UmbOutput(sys.phi, sys.phi_bending, sys.phi_phi, sys.lengths, sys.area_total, myfile_umb);

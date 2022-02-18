@@ -64,6 +64,8 @@ void MembraneMC::InputParam(int& argc, char* argv[]) { // Takes parameters from 
     output_path = local_path+rank_paths[world_rank];
     my_cout.open(output, ios_base::app);
 
+    // Start clock
+    t1 = chrono::steady_clock::now();
     ifstream input;
     input.open(output_path+"/param");
     // Check to see if param present. If not, do nothing
@@ -119,6 +121,8 @@ void MembraneMC::InputParam(int& argc, char* argv[]) { // Takes parameters from 
         input >> line >> nl_move_start;
         getline(input, line);
         input >> line >> bins;
+        getline(input, line);
+        input >> line >> dump_cycle >> dump_int >> dump_int_2 >> dump_config;
         input.close();
         // Output variables for catching things
         if(world_rank == 0) {
@@ -134,7 +138,7 @@ void MembraneMC::InputParam(int& argc, char* argv[]) { // Takes parameters from 
             cout << "lambda is now " << lambda << endl;
             cout << "lambda_scale is now " << lambda_scale << endl;
             cout << "ising_values is now " << ising_values[0] << " " << ising_values[1] << " " << ising_values[2] << endl;
-            cout << "J is now " << j_coupling[0][0] << " " << j_coupling[0][1] << " " << j_coupling[0][2] << endl;
+            cout << "j_coupling is now " << j_coupling[0][0] << " " << j_coupling[0][1] << " " << j_coupling[0][2] << endl;
             cout << "\t" << j_coupling[1][0] << " " << j_coupling[1][1] << " " << j_coupling[1][2] << endl;
             cout << "\t" << j_coupling[2][0] << " " << j_coupling[2][1] << " " << j_coupling[2][2] << endl;
             cout << "h is now " << h_external << endl;
@@ -145,6 +149,7 @@ void MembraneMC::InputParam(int& argc, char* argv[]) { // Takes parameters from 
             cout << "final_time is now " << final_time << endl;
             cout << "nl_move_start is now " << nl_move_start << endl;
             cout << "bins is now " << bins << endl;
+            cout << "dump frequency is now " << dump_cycle << " " << dump_int << " " << dump_int_2 << " " << dump_config << endl;
         }
         // Set lengths and seed_base
         lengths_old = lengths;
@@ -209,6 +214,47 @@ void MembraneMC::InputParam(int& argc, char* argv[]) { // Takes parameters from 
     }
 }
 
-void MembraneMC::OutputTimes() {
+void MembraneMC::OutputTimes(chrono::steady_clock::time_point& begin) {
+    // Begin by figuring out the total time
+    chrono::steady_clock::time_point end = chrono::steady_clock::now();
+    chrono::duration<double> time_span = end-begin;
     // Output time analysis
+    my_cout << "Total time: " << time_span.count() << " s" << endl;
+    my_cout << "Checkerboard MC time: " << time_storage_cycle[0] << " s" << endl;
+    my_cout << "Area MC time: " << time_storage_cycle[1] << " s" << endl;
+    my_cout << "Other time: " << time_span.count()-time_storage_cycle[0]-time_storage_cycle[1] << " s" << endl;
+
+    my_cout << "\nDisplace MC breakdown" << endl;
+    double displace_storage_total = 0;
+    for(int i=0; i<3; i++) {
+        displace_storage_total += time_storage_displace[i];
+    }
+    my_cout << "Checkerboard: " << time_storage_displace[0] << " s, " << time_storage_displace[0]/time_storage_cycle[1] << " per" << endl;
+    my_cout << "Shuffling: " << time_storage_displace[1] << " s, " << time_storage_displace[1]/time_storage_cycle[1] << " per" << endl;
+    my_cout << "Steps: " << time_storage_displace[2] << " s, " << time_storage_displace[2]/time_storage_cycle[1] << " per" << endl;
+    my_cout << "Misc: " << time_storage_cycle[0]-displace_storage_total << " s, " << (time_storage_cycle[0]-displace_storage_total)/time_storage_cycle[0] << " per" << endl;
+
+    my_cout << "\nArea MC breakdown" << endl;
+    double area_storage_total = 0;
+    for(int i=0; i<4; i++) {
+        area_storage_total += time_storage_area[i];
+    }
+    my_cout << "Initial: " << time_storage_area[0] << " s, " << time_storage_area[0]/time_storage_cycle[1] << " per" << endl;
+    my_cout << "Neighbor list: " << time_storage_area[1] << " s, " << time_storage_area[1]/time_storage_cycle[1] << " per" << endl;
+    my_cout << "Energy calculation: " << time_storage_area[2] << " s, " << time_storage_area[2]/time_storage_cycle[1] << " per" << endl;
+    my_cout << "A/R: " << time_storage_area[3] << " s, " << time_storage_area[3]/time_storage_cycle[1] << " per" << endl;
+    my_cout << "Misc: " << time_storage_cycle[1]-area_storage_total << " s, " << (time_storage_cycle[1]-area_storage_total)/time_storage_cycle[1] << " per" << endl;
+
+    double other_storage_total = 0;
+    for(int i=0; i<6; i++) {
+        other_storage_total += time_storage_other[i];
+    }
+    my_cout << "\nOther breakdown" << endl;
+    my_cout << "Generating system: " << time_storage_other[0] <<" s, " << time_storage_other[0]/other_storage_total << " per" << endl;
+    my_cout << "Initial cycle output: " << time_storage_other[1] <<" s, " << time_storage_other[1]/other_storage_total << " per" << endl;
+    my_cout << "Distance check: " << time_storage_other[2] <<" s, " << time_storage_other[2]/other_storage_total << " per" << endl;
+    my_cout << "Output reject per: " << time_storage_other[3] <<" s, " << time_storage_other[3]/other_storage_total << " per" << endl;
+    my_cout << "Output configurations: " << time_storage_other[4] <<" s, " << time_storage_other[4]/other_storage_total << " per" << endl;
+    my_cout << "Analyzers: " << time_storage_other[5] <<" s, " << time_storage_other[5]/other_storage_total << " per" << endl;
+    my_cout << "Misc: " << time_span.count()-time_storage_cycle[0]-time_storage_cycle[1]-other_storage_total <<" s";
 }

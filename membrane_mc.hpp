@@ -24,7 +24,7 @@ class MembraneMC {
         MembraneMC(int);
         ~MembraneMC();
         void InputParam(int&, char**);
-        void OutputTimes();
+        void OutputTimes(chrono::steady_clock::time_point&);
 
         // Variables
         // Initial mesh is points distributed in rectangular grid
@@ -97,6 +97,11 @@ class MembraneMC {
         int bins = 26;
         int storage_time = 10;
         int storage_umb_time = 100;
+        // Frequency to dump cycle and configurations
+        int dump_cycle = 1000;
+        int dump_int = 1000;
+        int dump_int_2 = 1000;
+        int dump_config = 10000;
 
         // Protein variables
         vector<int> protein_node;
@@ -116,7 +121,7 @@ class MembraneMC {
         double time_storage_cycle[2] = {0,0};
         double time_storage_area[4] = {0,0,0,0};
         double time_storage_displace[3] = {0,0,0};
-        double time_storage_other[8] = {0,0,0,0,0,0,0,0};
+        double time_storage_other[6] = {0,0,0,0,0,0};
         double time_storage_overall;
 
         // MPI variables

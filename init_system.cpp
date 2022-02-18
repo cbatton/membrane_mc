@@ -27,29 +27,33 @@ InitSystem::~InitSystem() {
 }
 
 void InitSystem::Initialize(MembraneMC& sys) {
-        // Use initializer to handle system initialization
-        Utilities util;
-        util.SaruSeed(sys,sys.count_step);
-        InitializeEquilState(sys);
-        GenerateTriangulationEquil(sys);
-        UseTriangulation(sys,"out.off");
-        // now place proteins
-        #pragma omp parallel for
-        for(int i=0; i<sys.vertices; i++) {
-            sys.protein_node[i] = -1;
-        }
-        // Place proteins at random
-        for(int i=0; i<sys.num_proteins; i++) {
-            bool check_nodes = true;
-            while(check_nodes) {
-                int j = sys.generator.rand_select(sys.vertices-1);
-                if(sys.ising_array[j] != 2) {
-                    check_nodes = false;
-                    sys.ising_array[j] = 2;
-                    sys.protein_node[j] = 0;
-                }
+    // Use initializer to handle system initialization
+    Utilities util;
+    util.SaruSeed(sys,sys.count_step);
+    InitializeEquilState(sys);
+    GenerateTriangulationEquil(sys);
+    UseTriangulation(sys,"out.off");
+    // now place proteins
+    #pragma omp parallel for
+    for(int i=0; i<sys.vertices; i++) {
+        sys.protein_node[i] = -1;
+    }
+    // Place proteins at random
+    for(int i=0; i<sys.num_proteins; i++) {
+        bool check_nodes = true;
+        while(check_nodes) {
+            int j = sys.generator.rand_select(sys.vertices-1);
+            if(sys.ising_array[j] != 2) {
+                check_nodes = false;
+                sys.ising_array[j] = 2;
+                sys.protein_node[j] = 0;
             }
         }
+    }
+    // End clock
+    sys.t2 = chrono::steady_clock::now();
+    chrono::duration<double> time_span_init = sys.t2-sys.t1;
+    sys.time_storage_other[0] += time_span_init.count();
 }
 
 void InitSystem::InitializeEquilState(MembraneMC& sys) {
@@ -121,13 +125,6 @@ void InitSystem::GenerateTriangulationEquil(MembraneMC& sys) {
                 // Basic idea here is to form the six triangles around each point, and then check to see if they are on the active triangle list
                 // If not, add to active triangle list and write to myfile
                 // New idea: generate six neighboring points, attempt to add to 
-                int point_neighbor_trials[6];
-                point_neighbor_trials[0] = dummy_up+i*sys.dim_y;
-                point_neighbor_trials[1] = j+dummy_right*sys.dim_y;
-                point_neighbor_trials[2] = dummy_down+dummy_right*sys.dim_y;
-                point_neighbor_trials[3] = dummy_down+i*sys.dim_y;
-                point_neighbor_trials[4] = j+dummy_left*sys.dim_y;
-                point_neighbor_trials[5] = dummy_down+dummy_left*sys.dim_y;
                 int triangle_trials[6][3];
                 triangle_trials[0][0] = j+i*sys.dim_y; triangle_trials[0][1] = dummy_up+i*sys.dim_y; triangle_trials[0][2] = j+dummy_right*sys.dim_y;
                 triangle_trials[1][0] = j+i*sys.dim_y; triangle_trials[1][1] = dummy_down+dummy_right*sys.dim_y; triangle_trials[1][2] = j+dummy_right*sys.dim_y;
@@ -187,13 +184,6 @@ void InitSystem::GenerateTriangulationEquil(MembraneMC& sys) {
                 // Basic idea here is to form the six triangles around each point, and then check to see if they are on the active triangle list
                 // If not, add to active triangle list and write to myfile
                 // New idea: generate six neighboring points, attempt to add to 
-                int point_neighbor_trials[6];
-                point_neighbor_trials[0] = dummy_up+i*sys.dim_y;
-                point_neighbor_trials[1] = dummy_up+dummy_right*sys.dim_y;
-                point_neighbor_trials[2] = j+dummy_right*sys.dim_y;
-                point_neighbor_trials[3] = dummy_down+i*sys.dim_y;
-                point_neighbor_trials[4] = dummy_up+dummy_left*sys.dim_y;
-                point_neighbor_trials[5] = j+dummy_left*sys.dim_y;
                 int triangle_trials[6][3];
                 triangle_trials[0][0] = j+i*sys.dim_y; triangle_trials[0][1] = dummy_up+i*sys.dim_y; triangle_trials[0][2] = dummy_up+dummy_right*sys.dim_y;
                 triangle_trials[1][0] = j+i*sys.dim_y; triangle_trials[1][1] = dummy_up+dummy_right*sys.dim_y; triangle_trials[1][2] = j+dummy_right*sys.dim_y;

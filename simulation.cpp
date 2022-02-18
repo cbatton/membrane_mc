@@ -374,11 +374,12 @@ void Simulation::Simulate(int cycles, MembraneMC& sys, NeighborList& nl, Analyze
     middle = chrono::steady_clock::now();
     chrono::duration<double> time_span_m = middle-begin;
     int i = 0;
+    int count_start = sys.count_step;
     while(time_span_m.count() < sys.final_warning) {
         util.SaruSeed(sys,sys.count_step);
         sys.count_step++;
 	    NextStepParallel(true, sys, nl);
-		if(i%sys.dump_cycle==0) {
+		if(sys.count_step%sys.dump_cycle==0) {
             t1_other = chrono::steady_clock::now();
             double phi_ = sys.phi;
             double phi_bending_ = sys.phi_bending;
@@ -409,7 +410,7 @@ void Simulation::Simulate(int cycles, MembraneMC& sys, NeighborList& nl, Analyze
             time_span = t2_other-t1_other;
             sys.time_storage_other[3] += time_span.count();
 		}
-		if(i%sys.dump_int==0) {
+		if(sys.count_step%sys.dump_int==0) {
             t1_other = chrono::steady_clock::now();
 			output.OutputTriangulation(sys,"int.off");	
             if(sys.count_step%sys.dump_int_2==0) {
@@ -425,15 +426,15 @@ void Simulation::Simulate(int cycles, MembraneMC& sys, NeighborList& nl, Analyze
             chrono::duration<double> time_span = t2_other-t1_other;
             sys.time_storage_other[4] += time_span.count();
 		}
-        if(i%analyzer.storage_umb_time==0) {
+        if(sys.count_step%analyzer.storage_umb_time==0) {
             analyzer.UmbOutput(sys.phi, sys.phi_bending, sys.phi_phi, sys.lengths, sys.area_total, myfile_umb);
             analyzer.umb_counts++;
         }
-        if(i%analyzer.storage_time==0) {
-		    analyzer.energy_storage[i/analyzer.storage_time] = sys.phi;
-            analyzer.area_storage[i/analyzer.storage_time] = sys.area_total;
-            analyzer.area_proj_storage[i/analyzer.storage_time] = sys.lengths[0]*sys.lengths[1];
-            analyzer.mass_storage[i/analyzer.storage_time] = sys.mass;
+        if(sys.count_step%analyzer.storage_time==0) {
+		    analyzer.energy_storage[(sys.count_step-count_start)/analyzer.storage_time] = sys.phi;
+            analyzer.area_storage[(sys.count_step-count_start)/analyzer.storage_time] = sys.area_total;
+            analyzer.area_proj_storage[(sys.count_step-count_start)/analyzer.storage_time] = sys.lengths[0]*sys.lengths[1];
+            analyzer.mass_storage[(sys.count_step-count_start)/analyzer.storage_time] = sys.mass;
             analyzer.storage_counts++;
         }
         middle = chrono::steady_clock::now();

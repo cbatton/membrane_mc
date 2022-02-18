@@ -50,6 +50,10 @@ void InitSystem::Initialize(MembraneMC& sys) {
             }
         }
     }
+    // Read restart file if avaliable
+    if(sys.restart == 1) {
+        UseTriangulationRestart(sys,"int.off");
+    }
     // End clock
     sys.t2 = chrono::steady_clock::now();
     chrono::duration<double> time_span_init = sys.t2-sys.t1;

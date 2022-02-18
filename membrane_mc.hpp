@@ -140,6 +140,9 @@ class MembraneMC {
         vector<vector<double>> area_diff_thread;
         vector<vector<int>> mass_diff_thread;
         vector<vector<double>> magnet_diff_thread;
+
+        // Restart flag
+        int restart = 0;
 };
 
 #endif

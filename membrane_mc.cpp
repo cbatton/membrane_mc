@@ -66,6 +66,22 @@ void MembraneMC::InputParam(int& argc, char* argv[]) { // Takes parameters from 
 
     // Start clock
     t1 = chrono::steady_clock::now();
+    // Check to see if we can restart
+    ifstream input_2;
+    input_2.open(output_path+"/int.off");
+    // Check to see if int.off present. If not, do nothing
+    if (input_2.fail()) {
+        if(world_rank == 0) {
+            my_cout << "No restart file." << endl;
+        }
+    }
+    else{
+        if(world_rank == 0) {
+            my_cout << "Restart file found." << endl;
+        }
+        restart = 1;
+    }
+    // Now read in param file
     ifstream input;
     input.open(output_path+"/param");
     // Check to see if param present. If not, do nothing
@@ -125,31 +141,31 @@ void MembraneMC::InputParam(int& argc, char* argv[]) { // Takes parameters from 
         input >> line >> dump_cycle >> dump_int >> dump_int_2 >> dump_config;
         input.close();
         // Output variables for catching things
-        if(world_rank == 0) {
-            cout << "Param file detected. Changing values." << endl;
-            cout << "Dimensions is now " << dim_x << " " << dim_y << endl;
-            cout << "Cycles is now " << cycles_eq << " " << cycles_prod << endl;
-            cout << "Temperature is now " << temp_list[0] << " " << temp_list[1] << endl;
-            cout << "k_b is now " << k_b[0] << " " << k_b[1] << " " << k_b[2] << endl;
-            cout << "gamma_surf is now " << gamma_surf[0] << " " << gamma_surf[1] << " " << gamma_surf[2] << endl;
-            cout << "tau_frame is now " << tau_frame << endl;
-            cout << "Spontaneous curvature is now " << spon_curv[0] << " " << spon_curv[1] << " " << spon_curv[2] << endl;
-            cout << "Lengths is now " << lengths[0] << " " << lengths[1] << " " << lengths[2] << endl;
-            cout << "lambda is now " << lambda << endl;
-            cout << "lambda_scale is now " << lambda_scale << endl;
-            cout << "ising_values is now " << ising_values[0] << " " << ising_values[1] << " " << ising_values[2] << endl;
-            cout << "j_coupling is now " << j_coupling[0][0] << " " << j_coupling[0][1] << " " << j_coupling[0][2] << endl;
-            cout << "\t" << j_coupling[1][0] << " " << j_coupling[1][1] << " " << j_coupling[1][2] << endl;
-            cout << "\t" << j_coupling[2][0] << " " << j_coupling[2][1] << " " << j_coupling[2][2] << endl;
-            cout << "h is now " << h_external << endl;
-            cout << "num_frac is now " << num_frac << endl;
-            cout << "num_proteins is now " << num_proteins << endl;
-            cout << "seed_base is now " << seed_base << endl;
-            cout << "count_step is now " << count_step << endl;
-            cout << "final_time is now " << final_time << endl;
-            cout << "nl_move_start is now " << nl_move_start << endl;
-            cout << "bins is now " << bins << endl;
-            cout << "dump frequency is now " << dump_cycle << " " << dump_int << " " << dump_int_2 << " " << dump_config << endl;
+        if((world_rank == 0) && (restart == 0)) {
+            my_cout << "Param file detected. Changing values." << endl;
+            my_cout << "Dimensions is now " << dim_x << " " << dim_y << endl;
+            my_cout << "Cycles is now " << cycles_eq << " " << cycles_prod << endl;
+            my_cout << "Temperature is now " << temp_list[0] << " " << temp_list[1] << endl;
+            my_cout << "k_b is now " << k_b[0] << " " << k_b[1] << " " << k_b[2] << endl;
+            my_cout << "gamma_surf is now " << gamma_surf[0] << " " << gamma_surf[1] << " " << gamma_surf[2] << endl;
+            my_cout << "tau_frame is now " << tau_frame << endl;
+            my_cout << "Spontaneous curvature is now " << spon_curv[0] << " " << spon_curv[1] << " " << spon_curv[2] << endl;
+            my_cout << "Lengths is now " << lengths[0] << " " << lengths[1] << " " << lengths[2] << endl;
+            my_cout << "lambda is now " << lambda << endl;
+            my_cout << "lambda_scale is now " << lambda_scale << endl;
+            my_cout << "ising_values is now " << ising_values[0] << " " << ising_values[1] << " " << ising_values[2] << endl;
+            my_cout << "j_coupling is now " << j_coupling[0][0] << " " << j_coupling[0][1] << " " << j_coupling[0][2] << endl;
+            my_cout << "\t" << j_coupling[1][0] << " " << j_coupling[1][1] << " " << j_coupling[1][2] << endl;
+            my_cout << "\t" << j_coupling[2][0] << " " << j_coupling[2][1] << " " << j_coupling[2][2] << endl;
+            my_cout << "h is now " << h_external << endl;
+            my_cout << "num_frac is now " << num_frac << endl;
+            my_cout << "num_proteins is now " << num_proteins << endl;
+            my_cout << "seed_base is now " << seed_base << endl;
+            my_cout << "count_step is now " << count_step << endl;
+            my_cout << "final_time is now " << final_time << endl;
+            my_cout << "nl_move_start is now " << nl_move_start << endl;
+            my_cout << "bins is now " << bins << endl;
+            my_cout << "dump frequency is now " << dump_cycle << " " << dump_int << " " << dump_int_2 << " " << dump_config << endl;
         }
         // Set lengths and seed_base
         lengths_old = lengths;
@@ -159,7 +175,7 @@ void MembraneMC::InputParam(int& argc, char* argv[]) { // Takes parameters from 
         seed_base = seed_base^(seed_base>>16);
         seed_base = seed_base*0x45679;
         if(world_rank == 0) {
-            cout << "seed_base is now " << seed_base << endl;
+            my_cout << "seed_base is now " << seed_base << endl;
         }
         // Initialize random number generators
         for(int i=0; i<omp_get_max_threads(); i++) {

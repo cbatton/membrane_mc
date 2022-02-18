@@ -39,8 +39,10 @@ int main(int argc, char* argv[]) {
     // Run simulation
     Simulation simulate(system.lambda, system.lambda_scale, system.nl_move_start, omp_get_max_threads());
     // Adjust temperature before equilibration
-    system.temp = system.temp_list[0];
-    simulate.Equilibriate(system.cycles_eq, system, nl, begin);
+    if(system.restart == 0) {
+        system.temp = system.temp_list[0];
+        simulate.Equilibriate(system.cycles_eq, system, nl, begin);
+    }
     // Adjust temperature before simulation
     system.temp = system.temp_list[1];
     simulate.Simulate(system.cycles_prod, system, nl, analysis, begin);

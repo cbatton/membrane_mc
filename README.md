@@ -11,7 +11,9 @@ MPI is used in a primitive form to run multiple copies in parallel that read dif
 The code allows for automatic restarting.
 The simulation output can be visualized using any program that reads xyz files.
 
-![Test](figures/multiple_proteins_C_1.png)
+# Output examples
+
 Example of a system where the proteins have no spontaneous curvature, leading to macrophase separation.
-![Test](figures/multiple_proteins_C_5.png)
+![Test](figures/multiple_proteins_C_1.png)
 Example of a system where the proteins have spontaneous curvature, leading to microphase separation.
+![Test](figures/multiple_proteins_C_5.png)

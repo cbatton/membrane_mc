@@ -24,6 +24,6 @@ Listed files:
 # Output examples
 
 Example of a system where the proteins have no spontaneous curvature, leading to macrophase separation.
-![Test](figures/multiple_proteins_C_1.png)
+![macro](figures/multiple_proteins_C_1.png)
 Example of a system where the proteins have spontaneous curvature, leading to microphase separation.
-![Test](figures/multiple_proteins_C_5.png)
+![micro](figures/multiple_proteins_C_5.png)

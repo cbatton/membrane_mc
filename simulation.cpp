@@ -431,10 +431,10 @@ void Simulation::Simulate(int cycles, MembraneMC& sys, NeighborList& nl, Analyze
             analyzer.umb_counts++;
         }
         if(sys.count_step%analyzer.storage_time==0) {
-		    analyzer.energy_storage[int(sys.count_step-count_start)/analyzer.storage_time] = sys.phi;
-            analyzer.area_storage[int(sys.count_step-count_start)/analyzer.storage_time] = sys.area_total;
-            analyzer.area_proj_storage[int(sys.count_step-count_start)/analyzer.storage_time] = sys.lengths[0]*sys.lengths[1];
-            analyzer.mass_storage[int(sys.count_step-count_start)/analyzer.storage_time] = sys.mass;
+		    analyzer.energy_storage[analyzer.storage_counts] = sys.phi;
+            analyzer.area_storage[analyzer.storage_counts] = sys.area_total;
+            analyzer.area_proj_storage[analyzer.storage_counts] = sys.lengths[0]*sys.lengths[1];
+            analyzer.mass_storage[analyzer.storage_counts] = sys.mass;
             analyzer.storage_counts++;
         }
         middle = chrono::steady_clock::now();

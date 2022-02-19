@@ -1,0 +1,24 @@
+dim 100 100
+cycles 100000 100000
+storage 100 100
+lengths 120 120 100
+temp 1.0 1.0
+k_b 20 60 60
+gamma 0 0 0
+tau 0
+spon_curv 0 0 0.3
+lambda 0.0005
+lambda_scale 0.00005
+ising_values -1.0 1.0 1.0
+j_coupling 0.3 0.3 0.3
+ 0.3 0.3 0.3
+ 0.3 0.3 0.3
+h_external 0.026801595107235565
+num_frac 0.0
+num_proteins 1200
+seed_base 0
+count_step 0
+final_time 1000000
+nl_move_start 1
+bins 1000
+dump 1000 1000 1000 1000

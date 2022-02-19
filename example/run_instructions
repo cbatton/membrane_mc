@@ -1,0 +1,3 @@
+Modify the path and then run by
+mpirun -np 1 .././main path paths
+This format can be modified to run as many independent calculations as desired by generating more folders that are specified in paths.

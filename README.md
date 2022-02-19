@@ -11,6 +11,16 @@ MPI is used in a primitive form to run multiple copies in parallel that read dif
 The code allows for automatic restarting.
 The simulation output can be visualized using any program that reads xyz files.
 
+Listed files:
+- `run_mc.cpp`, uses all the pieces to drive the simulation
+- `membrane_mc.cpp`, implements the main data structures
+- `init_system.cpp`, contains functions that initialize the system
+- `output_system.cpp`, contains functions that output the system in readable formats
+- `neighborlist.cpp`, implements neighbor list and checkerboard procedure
+- `mc_moves.cpp`, implements Monte Carlo moves
+- `utilities.cpp`, implements utility functions used throughout the over files
+- `simulation.cpp`, implements main equilibration and simulation procedures
+
 # Output examples
 
 Example of a system where the proteins have no spontaneous curvature, leading to macrophase separation.

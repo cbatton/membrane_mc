@@ -40,6 +40,14 @@ class Analyzers {
         void RhoAnalyzer(MembraneMC&);
         void OutputAnalyzers(MembraneMC&);
 
+        // Mean density from protein center variables
+        double area_proj_average;
+        int rdf_sample = 0;
+        double mass_sample[3] = {0,0,0};
+        int bins;
+        double bin_size = 10;
+        vector<vector<double>> rho;
+
         // Storage variables
         int storage_time;
         int storage_umb_time;
@@ -54,14 +62,6 @@ class Analyzers {
         int neighbor_counts = 0;
         // Output string
         string output_path;
-
-        // Mean density from protein center variables
-        double area_proj_average;
-        int rdf_sample = 0;
-        double mass_sample[3] = {0,0,0};
-        int bins;
-        double bin_size = 10;
-        vector<vector<double>> rho;
 
         vector<double> mean_cluster_number;
         vector<double> mean_cluster_weight;

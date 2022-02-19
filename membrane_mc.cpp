@@ -145,6 +145,7 @@ void MembraneMC::InputParam(int& argc, char* argv[]) { // Takes parameters from 
             my_cout << "Param file detected. Changing values." << endl;
             my_cout << "Dimensions is now " << dim_x << " " << dim_y << endl;
             my_cout << "Cycles is now " << cycles_eq << " " << cycles_prod << endl;
+            my_cout << "Lengths is now " << lengths[0] << " " << lengths[1] << " " << lengths[2] << endl;
             my_cout << "Temperature is now " << temp_list[0] << " " << temp_list[1] << endl;
             my_cout << "k_b is now " << k_b[0] << " " << k_b[1] << " " << k_b[2] << endl;
             my_cout << "gamma_surf is now " << gamma_surf[0] << " " << gamma_surf[1] << " " << gamma_surf[2] << endl;

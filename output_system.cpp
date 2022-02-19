@@ -128,7 +128,7 @@ void OutputSystem::DumpXYZConfig(MembraneMC& sys, string name) {
     myfile << sys.vertices << endl;
     myfile << "Lattice=\"" << sys.lengths[0] << " 0.0 0.0 0.0 " << sys.lengths[1] << " 0.0 0.0 0.0 " << sys.lengths[2] << "\" ";
     myfile << "Origin=\"" << -0.5*sys.lengths[0] << " " << -0.5*sys.lengths[1] << " " << -0.5*sys.lengths[2] << "\" ";
-    myfile << "Properties=species:S:3:pos:R:3 ";
+    myfile << "Properties=species:S:1:pos:R:3 ";
     myfile << "Time=" << sys.count_step << "\n";
     for(int i=0; i < sys.vertices; i++) {
         myfile << " " << sys.ising_array[i] << " " << std::scientific << sys.lengths[0]*sys.radii_tri[i][0] << " " << std::scientific << sys.lengths[1]*sys.radii_tri[i][1] << " " << std::scientific << sys.radii_tri[i][2] << "\n";

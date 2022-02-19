@@ -416,7 +416,7 @@ void Simulation::Simulate(int cycles, MembraneMC& sys, NeighborList& nl, Analyze
             if(sys.count_step%sys.dump_int_2==0) {
                 output.OutputTriangulation(sys,"int_2.off");	
             }
-            if(i%sys.dump_config==0) {
+            if(sys.count_step%sys.dump_config==0) {
 			    output.DumpXYZConfig(sys,"config.xyz");
 			    output.OutputTriangulationAppend(sys,"prod.off");	
             }

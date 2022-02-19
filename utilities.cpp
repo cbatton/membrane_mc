@@ -208,6 +208,8 @@ void Utilities::InitializeEnergy(MembraneMC& sys, NeighborList& nl) {
             magnet += sys.ising_values[sys.ising_array[i]];
         }
     }
+    sys.mass = mass;
+    sys.magnet = magnet;
     sys.phi -= sys.h_external*sys.magnet;   
  
     double phi_magnet = 0;

@@ -204,7 +204,6 @@ void MCMoves::TetherCut(MembraneMC& sys, NeighborList& nl, int vertex_trial, int
 
     int triangle_trial[2]; 
     int point_trial[2]; 
-    int point_trial_position[2];
 
     // Find the triangles to be changed using sys.point_neighbor_list
     triangle_trial[0] = sys.point_neighbor_triangle[vertex_trial][link_trial][0];
@@ -215,19 +214,15 @@ void MCMoves::TetherCut(MembraneMC& sys, NeighborList& nl, int vertex_trial, int
         if ((vertex_trial == sys.triangle_list[triangle_trial[i]][0]) || (vertex_trial_opposite == sys.triangle_list[triangle_trial[i]][0])) {
             if ((vertex_trial == sys.triangle_list[triangle_trial[i]][1]) || (vertex_trial_opposite == sys.triangle_list[triangle_trial[i]][1])) {
                 point_trial[i] = sys.triangle_list[triangle_trial[i]][2];
-                point_trial_position[i] = 2;
             }
             else {
                 point_trial[i] = sys.triangle_list[triangle_trial[i]][1];
-                point_trial_position[i] = 1;
             }
         }
         else {
             point_trial[i] = sys.triangle_list[triangle_trial[i]][0];
-            point_trial_position[i] = 0;
         }
     }
-	int triangle_break[2];
     if((vertex_trial < 0) || (vertex_trial_opposite < 0) || (point_trial[0] < 0) || (point_trial[1] < 0) || (vertex_trial_opposite > sys.vertices) || (point_trial[0] > sys.vertices) || (point_trial[1] > sys.vertices)) {
 		steps_rejected_tether_thread[thread_id][0] += 1;
     	steps_tested_tether_thread[thread_id][0] += 1;
@@ -290,13 +285,10 @@ void MCMoves::TetherCut(MembraneMC& sys, NeighborList& nl, int vertex_trial, int
     // Change sys.point_neighbor_list and sys.point_neighbor_triangle
     // Delete points
     int placeholder_nl = 0;
-    int placeholder_neighbor1 = 0;
-    int placeholder_neighbor2 = 0;
     while(placeholder_nl < sys.point_neighbor_list[vertex_trial].size()) {
         if(sys.point_neighbor_list[vertex_trial][placeholder_nl] == vertex_trial_opposite) {
             sys.point_neighbor_list[vertex_trial][placeholder_nl] = sys.point_neighbor_list[vertex_trial].back();
             sys.point_neighbor_triangle[vertex_trial][placeholder_nl] = sys.point_neighbor_triangle[vertex_trial].back();
-            placeholder_neighbor1 = placeholder_nl;
             sys.point_neighbor_list[vertex_trial].pop_back();
             sys.point_neighbor_triangle[vertex_trial].pop_back();
             placeholder_nl = sys.neighbor_max;
@@ -308,7 +300,6 @@ void MCMoves::TetherCut(MembraneMC& sys, NeighborList& nl, int vertex_trial, int
         if(sys.point_neighbor_list[vertex_trial_opposite][placeholder_nl] == vertex_trial) {
             sys.point_neighbor_list[vertex_trial_opposite][placeholder_nl] = sys.point_neighbor_list[vertex_trial_opposite].back();
             sys.point_neighbor_triangle[vertex_trial_opposite][placeholder_nl] = sys.point_neighbor_triangle[vertex_trial_opposite].back();
-            placeholder_neighbor2 = placeholder_nl;
             sys.point_neighbor_list[vertex_trial_opposite].pop_back();
             sys.point_neighbor_triangle[vertex_trial_opposite].pop_back();
             placeholder_nl = sys.neighbor_max;
@@ -327,71 +318,54 @@ void MCMoves::TetherCut(MembraneMC& sys, NeighborList& nl, int vertex_trial, int
     // and vertex_trial_opposite and point_trial[0] to swap triangle_trial[1] to triangle_trial[0]
     // and triangle_trial[0] to triangle_trial[1] respectively
     // Placeholder values so places needed are saved
-    int placeholder_remake[4] = {0,0,0,0};
-    int placeholder_remake_01[4] = {0,0,0,0};
     // vertex_trial and point_trial[1]
     for(int i=0; i<sys.point_neighbor_list[vertex_trial].size(); i++) {
         if(sys.point_neighbor_list[vertex_trial][i] == point_trial[1]) {
-            placeholder_remake[0] = i;
             if(sys.point_neighbor_triangle[vertex_trial][i][0] == triangle_trial[1]) {
                 sys.point_neighbor_triangle[vertex_trial][i][0] = triangle_trial[0];
-                placeholder_remake_01[0] = 0;
             }
             else if(sys.point_neighbor_triangle[vertex_trial][i][1] == triangle_trial[1]) {
                 sys.point_neighbor_triangle[vertex_trial][i][1] = triangle_trial[0];
-                placeholder_remake_01[0] = 1;
             }
         }
     }
     for(int i=0; i<sys.point_neighbor_list[point_trial[1]].size(); i++) {
         if(sys.point_neighbor_list[point_trial[1]][i] == vertex_trial) {
-            placeholder_remake[1] = i;
             if(sys.point_neighbor_triangle[point_trial[1]][i][0] == triangle_trial[1]) {
                 sys.point_neighbor_triangle[point_trial[1]][i][0] = triangle_trial[0];
-                placeholder_remake_01[1] = 0;
             }
             else if(sys.point_neighbor_triangle[point_trial[1]][i][1] == triangle_trial[1]) {
                 sys.point_neighbor_triangle[point_trial[1]][i][1] = triangle_trial[0];
-                placeholder_remake_01[1] = 1;
             }
         }
     }
     // vertex_trial_opposite and point_trial[0]
     for(int i=0; i<sys.point_neighbor_list[vertex_trial_opposite].size(); i++) {
         if(sys.point_neighbor_list[vertex_trial_opposite][i] == point_trial[0]) {
-            placeholder_remake[2] = i;
             if(sys.point_neighbor_triangle[vertex_trial_opposite][i][0] == triangle_trial[0]) {
                 sys.point_neighbor_triangle[vertex_trial_opposite][i][0] = triangle_trial[1];
-                placeholder_remake_01[2] = 0;
             }
             else if(sys.point_neighbor_triangle[vertex_trial_opposite][i][1] == triangle_trial[0]) {
                 sys.point_neighbor_triangle[vertex_trial_opposite][i][1] = triangle_trial[1];
-                placeholder_remake_01[2] = 1;
             }
         }
     }
     for(int i=0; i<sys.point_neighbor_list[point_trial[0]].size(); i++) {
         if(sys.point_neighbor_list[point_trial[0]][i] == vertex_trial_opposite) {
-            placeholder_remake[3] = i;
             if(sys.point_neighbor_triangle[point_trial[0]][i][0] == triangle_trial[0]) {
                 sys.point_neighbor_triangle[point_trial[0]][i][0] = triangle_trial[1];
-                placeholder_remake_01[3] = 0;
             }
             else if(sys.point_neighbor_triangle[point_trial[0]][i][1] == triangle_trial[0]) {
                 sys.point_neighbor_triangle[point_trial[0]][i][1] = triangle_trial[1];
-                placeholder_remake_01[3] = 1;
             }
         }
     }
 
     // Change sys.point_triangle_list
     placeholder_nl = 0;
-    int placeholder_triangle1 = 0;
-    int placeholder_triangle2 = 0;
     while(placeholder_nl < sys.point_triangle_list[vertex_trial].size()) {
         if(sys.point_triangle_list[vertex_trial][placeholder_nl] == triangle_trial[1]) {
             sys.point_triangle_list[vertex_trial][placeholder_nl] = sys.point_triangle_list[vertex_trial].back();
-            placeholder_triangle1 = placeholder_nl;
             sys.point_triangle_list[vertex_trial].pop_back();
             placeholder_nl = sys.neighbor_max;
         }
@@ -401,7 +375,6 @@ void MCMoves::TetherCut(MembraneMC& sys, NeighborList& nl, int vertex_trial, int
     while(placeholder_nl < sys.point_triangle_list[vertex_trial_opposite].size()) {
         if(sys.point_triangle_list[vertex_trial_opposite][placeholder_nl] == triangle_trial[0]) {
             sys.point_triangle_list[vertex_trial_opposite][placeholder_nl] = sys.point_triangle_list[vertex_trial_opposite].back();
-            placeholder_triangle2 = placeholder_nl;
             sys.point_triangle_list[vertex_trial_opposite].pop_back();
             placeholder_nl = sys.neighbor_max;
         }

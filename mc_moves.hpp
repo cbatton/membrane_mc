@@ -48,6 +48,8 @@ class MCMoves {
         long long int steps_rejected_eq = 0;
         long long int steps_tested_prod = 0;
         long long int steps_rejected_prod = 0;
+        // nl move parameter
+        int nl_move_start = 0;
         int max_threads = 272;
         //if(max_threads != omp_get_max_threads()){
             //max_threads = omp_get_max_threads();
@@ -60,8 +62,6 @@ class MCMoves {
         vector<vector<int>> steps_rejected_mass_thread;
         vector<vector<int>> steps_tested_protein_thread;
         vector<vector<int>> steps_rejected_protein_thread;
-        // nl move parameter
-        int nl_move_start = 0;
         // Utilities helper
         Utilities util;
 };
